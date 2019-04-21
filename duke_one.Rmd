@@ -1,0 +1,615 @@
+---
+title: "duke"
+author: "DanielH"
+date: "April 10, 2019"
+output:
+  html_notebook:
+    theme: readable
+  html_document: default
+  github_document:
+    toc: true
+    toc_depth: 2
+  pdf_document: default
+  keep_md: yes
+---
+
+```{r, message=FALSE, echo=FALSE}
+
+library(tidyverse)
+
+# read data
+beauty_raw <- 
+  read_csv('https://raw.githubusercontent.com/idc9/stor390/master/data/beauty_clean_df.csv')
+
+
+beauty <- 
+  beauty_raw %>%
+  mutate_at(1, str_to_title)
+```
+
+## data exploration
+
+```{r}
+beauty %>%
+  str()
+```
+
+We have two character vars, `person` and `line`
+
+```{r}
+beauty %>%
+  count(person, sort = T)
+```
+
+### how many times do the main characters speak?
+
+First of all we should count hte times the character's name is mentioned in the text
+
+There are many ways to answer that questions. We've already seen one (right above) using `count()`. However here we want to use string manipualtion functions form the stringr package.
+
+Let'say we want to count the times Gaston|Belle speaks
+
+```{r}
+
+# count Gaston
+beauty %>%
+  pull(person) %>% 
+  str_detect("Gaston") %>%
+  sum()
+
+# count Belle
+beauty %>%
+  pull(person) %>%
+  str_detect("Belle") %>%
+  sum()
+```
+
+That doesn’t tell us anything about how much time each of them speaks, since we are just counting numbers of uninterrupted lines. 
+
+Let’s first remove the semicolon separators and count the total number of characters(nchars) each person has
+
+```{r}
+# remove semicolon
+beauty %>%
+  mutate(line = str_replace_all(line, ";", " ")) %>%
+  group_by(person) %>%
+  summarize(tot_char = sum(nchar(line))) %>%
+  filter(str_detect(person, "Gaston"))
+```
+
+We now want to extract some type of names using regex
+
+```{r}
+
+# filter for names containing numbers
+beauty %>%
+  filter(str_detect(person, "[0-9]")) %>%
+  pull(person) %>%
+  unique()
+
+# matches names containing punctuations
+beauty %>%
+  filter(str_detect(person, "[[:punct:]]+")) %>%
+  pull(person) %>%
+  unique()
+
+```
+
+We Can see that we could do some replacements by grouping some person names in order to improve the readability
+
+```{r}
+beauty %>%
+  pull(person) %>%
+  #str_subset("Bimbet|Group|Man|All|Both|Cron") %>%
+  unique() %>%
+  str_sort()
+  
+```
+
+We use regex to define the pattern of the perosn names we want to replace with a grouping name
+
+```{r}
+beauty_processed <-
+  beauty %>%
+  mutate(person = str_replace_all(person, 
+                                  c("Townsfolk[\\s0-9]*" = "Townsfolk",
+                                    "Bimbettes?[\\s0-9]*|Woman[\\s0-9]*" = "Woman",
+                                    "Crony[\\s0-9]*|Old Cronies" = "Crony",
+                                    "Group[\\s0-9]*|Bystanders|All|Both|Mugs|Mob|Chorus" = "Group",
+                                    "M[ae]n[\\s0-9]*" = "Man")))
+
+
+beauty_processed  %>% 
+  pull(person) %>%
+  unique() %>%
+  str_sort()
+```
+
+### how rich is each character's vocabulary?
+
+#####Counting unique words
+
+We want one unique word count for each character, not each line. There are several ways to do it. An example:
+
+```{r}
+
+
+beauty_processed %>%
+  filter(person %in% c("Townsfolk", "Crony")) %>% 
+  group_by(person) %>% 
+  summarize(line = str_c(line, collapse = "; "),
+            num_lines = n(),
+            num_words = str_count(line, "[\\w']+"),
+            words_unique = str_extract_all(line, "[\\w']+") %>% map_int(~length(unique(.x)))) %>%
+  ungroup() %>%
+  select(-line)
+```
+
+__NOTE__
+
+Here we've decided to handle contractions as one word. This is a good example of when a seemingly small change in our regular expression makes a meaningful difference. `it'`s as a single word
+
+We used this:
+
+```{r}
+"Little town, it's a quiet village;Every day, like the one before;Little town, full of little people;Waking up to say...;" %>%
+  str_extract_all("[\\w']+")
+```
+
+not this, where `it's` gets split into two parts
+
+```{r}
+"Little town, it's a quiet village;Every day, like the one before;Little town, full of little people;Waking up to say...;" %>%
+  str_extract_all("\\w+")
+```
+
+## Using regex to clean data
+
+The data frame above was already set up for us. But the file started as a plain text document on a website.
+
+Let’s rewind and show how string manipulation lets us take a slightly messy dataset and turn it into the data frame we used above.
+
+```{r}
+beauty <- read_lines('http://www.fpx.de/fp/Disney/Scripts/BeautyAndTheBeast.txt')
+
+# check
+beauty %>%
+  head(10) %>%
+  str_subset("[:upper:]{2,}") %>%
+  str_to_lower()
+
+
+
+beauty %>%
+  str_extract_all("[:upper:]{2,}") %>% flatten_chr() %>% unique() %>% str_to_title()
+```
+
+
+
+__Goal__: A data frame with one row per line of dialogue, with a column for the dialogue text and a column for the speaker name.
+
+Plan ideas:
+
+We can’t make a one-column data frame from our vector then split it into two columns using the tidyr package, since we do not have each cell representing a new line of dialogue.
+
+The basic plan will be to collapse the entire script into a single string, extract each new line of dialogue as its own cell in a vector, using the distinct structure of the dialogue identifiers, clean up little issues along the way
+
+```{r}
+
+# read in the raw text file , each line is an entry in a vector, skip first 6 rows
+beauty <- 
+  read_lines('http://www.fpx.de/fp/Disney/Scripts/BeautyAndTheBeast.txt', skip = 6)
+
+# collapse each line into a single string separate lines by a ;
+beauty <- 
+  beauty %>%
+  str_trim(side = "both") %>%
+  paste(collapse = ";")
+
+
+```
+
+
+---
+
+```{r}
+
+test <-
+  "I don't usually leave the asylum in the middle of the night, but they said you'd make it worth my while.
+GASTON: It's like this.  I've got my heart set on marrying Belle, but she needs a little persuasion."
+```
+
+
+>How do we extract everything before the pattern `GASTON`?  Using what’s called a look-ahead.
+
+__Look-ahead__
+
+positive look-ahead: `pattern1(?=pattern2)` will match pattern1 only when it is followed by pattern2
+
+negative look-ahead: `pattern1(?!pattern2)` will match pattern1 when it is NOT followed by pattern2
+
+positive and negative look-behinds are similar, coded with `(?<=pattern2)pattern1` and `(?<!pattern2)pattern1` respectively
+
+##### simple example
+
+Let start with something simpler than our case. The expression below matches candle only when it is followed by the phrase stick.
+
+```{r}
+
+# candel when followed by stick
+c("candlestick", "candlemaker", "smart candle") %>%
+  str_detect("candle(?=stick)")
+
+# candle followed by some punctuation
+c("candle!!?", "candlemaker", "smart candle%") %>%
+  str_detect("candle(?=[[:punct:]]+)")
+```
+
+Look-behinds are similar, except that you can’t use the asterisk or plus quantifiers (which match as large a string as you want) for the pattern in parentheses.
+
+```{r}
+c("candle!!?", "candlemaker", "smart candle%") %>%
+  str_extract("(?<=[a-z]{1,10})[[:punct:]]+")
+```
+
+---
+
+Back to the question: 
+
+__How do we extract everything before GASTON: in the test phrase above? Use the catch-all.__
+
+```{r}
+test %>%
+  str_extract(".+(?=GASTON:)") %>%
+  str_trim()
+```
+
+
+###problems with a more realistic example
+
+Let’s use an example closer to what we will see in our data. We will need all dialogue between character names. Now there is a problem:
+
+We have to change the look-ahead statement to get any character name, of variable lengths, some with punctuation and spaces. The pattern `[A-Z\\s[:punct:]]+[:]` will match that 
+
+```{r}
+test <- "BEAST: What are you doing here? MAURICE: Run, Belle! BEAST: The master of this castle. BELLE: I've come for my father.  Please let him out!  Can't you see he's sick? BEAST: Then he shouldn't have trespassed here."
+```
+
+
+
+
+```{r}
+
+test %>%
+  str_extract(".+(?=[A-Z\\s[:punct:]]+:)")
+```
+
+It returned almost everything and missed the final bit of dialogue. Here’s why:
+
+* The function checks each character to see if it matches . (everything does) and is followed by the look-ahead expression.
+* If both of those are true, it returns the match to the pattern we gave it before the look-ahead statement—in this case everything there is.
+* When it got to the letter S in the last case of BEAST:, the look-ahead statement matched T: and returned everything else before it.
+
+
+Here are some other failed attempts at getting what we want, to show other things you can do:
+
+matching only lower cases, spaces and punctuation in the first pattern fails to pick up the capital letters starting sentences and proper names in the dialogue.
+
+
+```{r}
+test %>%
+  str_extract_all("[a-z[:punct:]\\s]+(?=[A-Z\\s[:punct:]]+:)")
+```
+
+Matching specific punctuation allowing upper cases in patterns NOT followed by the character naming pattern returns nicer chunks but leaves the character identifiers in the preceding string. We want to be able to extract the separately.
+
+
+```{r}
+test %>%
+  str_extract_all("[A-z;.,'!?\\s]+(?![A-Z\\s[:punct:]]+:)") %>%
+  modify_depth(1, str_trim)
+```
+
+Notice we put specific punctuation in excluding the colon. But colons in our data do show up outside of person identifiers, so we can’t do that either.
+
+## a recap of the problem, and a fix
+
+Our basic problem is that the person identifiers are not good string separation criteria because they have too much in common with the rest of the text. That makes it difficult to use the look-ahead or other means for splitting the dataset in the way we want.
+
+But the person identifiers are still distinct enough that we can match them—which means __we can replace them with identifiers that are different enough from the dialogue to be good split criteria__.
+
+Extracting the person identifiers, _adding some bogus lines to show this works for character names with punctuation and numbers_:
+
+
+```{r}
+
+test <- "BEAST: What are you doing here? MAURICE: Run, Belle! BEAST: The master of this castle. BELLE: I've come for my father.  Please let him out!  Can't you see he's sick? BEAST: Then he shouldn't have trespassed here. TOWNSFOLK 2: He's a monster! MRS. POTTS: Now pipe down!"
+
+str_extract_all(test, "[A-Z]+[\\s0-9[:punct:]]*:|MRS. POTTS:") %>%
+  flatten_chr()
+```
+
+As we can see, to keep the MRS. in MRS. POTTS we have to handle it separately, with a regular expression or statement.
+
+We now replace person identifiers:
+
+```{r}
+test %>%
+  str_replace_all("[A-Z]+[\\s0-9[:punct:]]*:|MRS. POTTS:", "&&&&&&&&")
+```
+
+### new plan
+
+Our new plan is:
+
+* __replace each character identifier with a unique id__ that allows us to separate the text more easily using look-ahead expressions
+
+* __extract the identifiers and the dialogue in between them__, giving two equal-length vectors matching speakers to what they say
+
+* __create a data frame__ with one column for speaker name and one for dialogue
+
+* __match the ids back to the character names__
+
+
+#### replacing multiple items using lists
+
+A useful feature of `str_replace_all` is that you can pass it a list of things to match and to replace. 
+
+```{r}
+test %>%
+  str_replace_all(c("BEAST:" = "001>", "MAURICE:" = "002>", "BELLE:" = "003>"))
+```
+
+Alternatively, we could create a list object whose names are the patterns we want to replace and whose entries are the things we want to replace them with. Then we pass that to the function.
+
+```{r}
+
+# extract characters
+codes <- 
+  test %>%
+  str_extract_all("[A-Z]+[\\s0-9[:punct:]]*:|MRS. POTTS:") %>%
+  flatten_chr() %>%
+  unique()
+
+# list of code names to use for replacement
+codes_list <-
+  seq(from = 100, to = 100 + length(codes) - 1) %>%
+  paste0(">") %>%
+  as.list() %>%
+  set_names(codes)
+
+# replacement
+test %>%
+  map_chr(~str_replace_all(.x, codes_list %>% as_vector())) -> test2
+
+
+```
+
+And that gives us what we want
+
+```{r}
+# Dialogue
+str_extract_all(test2, "[A-z[:punct:][:space:]]+(?![0-9]{3}>)") 
+```
+
+
+
+## from this point on it doesn't work
+
+## putting all together
+
+
+```{r, eval=FALSE}
+# extract characters
+codes <- 
+  beauty %>%
+  str_extract_all("[A-Z]+[\\s0-9[:punct:]]*:|MRS. POTTS:") %>%
+  flatten_chr() 
+
+# list of code names to use for replacement
+
+
+codes_list <-
+  seq(from = 100, to = 100 + length(codes) - 1) %>%
+  paste0(">") %>%
+  as.list() %>%
+  set_names(codes)
+
+# replacement
+tibble(person = codes %>% str_replace_all(":", ""),
+       line = str_extract_all(beauty, "[A-z[:punct:][:space:]]+(?![0-9]{3}>)", simplify = T))
+
+
+
+str_extract_all(beauty, "[A-z[:punct:][:space:]]+(?![0-9]{3}>)", simplify = T) %>% as_tibble()
+```
+
+So
+
+
+
+```{r, eval=FALSE}
+
+test <- "BEAST: What are you doing here? MAURICE: Run, Belle! BEAST: The master of this castle. BELLE: I've come for my father.  Please let him out!  Can't you see he's sick? BEAST: Then he shouldn't have trespassed here. TOWNSFOLK 2: He's a monster! MRS. POTTS: Now pipe down!"
+
+str_replace_all(test, c("BEAST:" = "001>", "MAURICE:" = "002>", "BELLE:" = "003>"))
+
+# little annoying or statement for MRS. POTTS. Can't rearrage the previous statement without getting more
+codes <- unique(str_extract_all(beauty, "[A-Z]+[\\s0-9[:punct:]]*:|MRS. POTTS:|OLD CRONIES:")[[1]])
+codes_list <- as.list(paste0(seq(from = 100, to = 100 + length(codes) - 1), ">"))
+names(codes_list) <- codes
+
+beauty <- str_replace_all(beauty, codes_list) %>%
+  # final line ends with this
+  str_replace("</pre>", "") %>%
+  # first removing the scene descriptions between two brackets
+  str_replace_all("(\\(){1}[A-Za-z0-9\\s,.;:'!?]*(\\)){1}", "") %>%
+  # now getting the dangling brackets with open ends at the end of the line or dangling brackets
+  str_replace_all("(\\(){1}[A-Za-z0-9\\s,.;:'!?]*(\\))*", "")
+
+beauty <- data.frame(person = str_extract_all(beauty, "[0-9]{3}>")[[1]],
+                     line = str_extract_all(beauty, "[A-z[:punct:][:space:]]+(?![0-9]{3}>)")[[1]])
+
+# Now switch the codes back to names and clean up a little
+names(codes) <- unlist(codes_list)
+codes <- as.list(codes)
+beauty$person <- str_replace_all(beauty$person, codes) %>% str_replace_all(":", "")
+beauty$line <- str_trim(beauty$line, side = "both") %>% str_replace_all(";+", ";")
+
+tail(beauty)
+```
+
+
+
+---
+
+#### extra shit
+
+
+```{r}
+
+test <- "BEAST: What are you doing here? MAURICE: Run, Belle! BEAST: The master of this castle. BELLE: I've come for my father.  Please let him out!  Can't you see he's sick? BEAST: Then he shouldn't have trespassed here. TOWNSFOLK 2: He's a monster! MRS. POTTS: Now pipe down!"
+
+
+test %>%
+  str_extract_all("[A-Z]+[\\s0-9[:punct:]]*:|MRS. POTTS:")
+
+
+# define wrangling function
+cleaner <- function(x) {
+  x %>% 
+  map(~str_replace_all(.x, ":", " ")) %>%
+  map(str_trim) %>%
+  flatten_chr() %>%
+  unique() %>%
+  str_to_title() %>%
+  str_sort()
+ 
+}
+
+
+# call function
+beauty %>%
+  str_extract_all("[A-Z]+[\\s0-9[:punct:]]*:|MRS. POTTS:") %>%
+  cleaner()
+```
+
+
+
+
+
+
+
+
+also from https://stringr.tidyverse.org/articles/regular-expressions.html
+
+Check look arounds https://stringr.tidyverse.org/articles/regular-expressions.html  end of page
+
+
+
+
+
+
+
+
+
+---
+
+cazzeggio
+
+
+```{r}
+beauty %>% str_extract_all("COGSWORTH|BELLE") %>% modify_depth(1, ~str_detect(.x,"BEL") %>% sum)
+beauty %>% str_extract_all("COGSWORTH|BELLE") %>% modify_depth(1, ~str_detect(.x,"COGS") %>% sum)
+
+
+
+beauty %>% str_extract_all("COGSWORTH|BELLE") %>% modify_depth(1, length)
+
+
+tibble(cogswort = beauty %>% 
+         str_extract_all("COGSWORTH|BELLE") %>%
+         modify_depth(1, ~str_detect(.x,"COGS") %>% sum) %>%
+         as_vector,
+       belle = str_extract_all("COGSWORTH|BELLE") %>%
+         modify_depth(1, ~str_detect(.x,"BEL") %>% sum) %>%
+         as_vector)
+
+
+
+tibble(belle = beauty %>% 
+         str_extract_all("COGSWORTH|BELLE") %>%
+         modify_depth(1, ~str_detect(.x,"BEL") %>% sum) %>%
+         as_vector,
+       cogswort = beauty %>% 
+         str_extract_all("COGSWORTH|BELLE") %>%
+         modify_depth(1, ~str_detect(.x,"COGS") %>% sum) %>%
+         as_vector,
+       total = belle + cogswort)  %>%
+  mutate(" " = "occurrencies") %>%
+  select(4, everything())
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+test <- "BEAST: What are you doing here? MAURICE: Run, Belle! BEAST: The master of this castle. BELLE: I've come for my father.  Please let him out!  Can't you see he's sick? BEAST: Then he shouldn't have trespassed here. TOWNSFOLK 2: He's a monster! MRS. POTTS: Now pipe down!"
+
+test %>%
+  str_extract_all("[A-Z]+[\\s0-9[:punct:]]*:|MRS. POTTS:") # returns a list
+
+# add some bogus identifiers
+test %>%
+  str_extract_all("[A-Z]+[\\s0-9[:punct:]]*:|MRS. POTTS:")
+
+# back to our example
+str_replace_all(test, c("BEAST:" = "001>", "MAURICE:" = "002>", "BELLE:" = "003>"))
+
+
+
+
+
+codes <- unique(str_extract_all(beauty_processed, "[A-Z]+[\\s0-9[:punct:]]*:|MRS. POTTS:")[[1]])
+codes_list <- as.list(paste0(seq(from = 100, to = 100 + length(codes) - 1), ">"))
+names(codes_list) <- codes
+codes_list
+```
+
+#### look at the lab:  https://idc9.github.io/stor390/labs/6/strings_lab.html

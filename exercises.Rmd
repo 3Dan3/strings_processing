@@ -1,0 +1,566 @@
+---
+title: "stringr practice"
+author: "DanielH"
+date: "April 13, 2019"
+output:
+  github_document:
+    toc: true
+    toc_depth: 2
+  html_notebook:
+    theme: readable
+  pdf_document: default
+  html_document: default
+  keep_md: yes
+---
+
+```{r, message=FALSE}
+
+library(tidyverse)
+library(ggalt)
+library(babynames)
+```
+
+---
+
+## part 1
+
+https://www.r-exercises.com/2017/07/14/hacking-strings-with-stringr/
+
+### exercise 001
+
+>use a stringr function to merge these 3 strings.
+
+`x <- "I AM SAM. I AM SAM. SAM I AM"` 
+
+`y <- "THAT SAM-I-AM! THAT SAM-I-AM! I DO NOT LIKE THAT SAM-I-AM!"`
+
+`z <- "DO WOULD YOU LIKE GREEN EGGS AND HAM?"`
+
+```{r}
+x <- "I AM SAM. I AM SAM. SAM I AM"
+y <- "THAT SAM-I-AM! THAT SAM-I-AM! I DO NOT LIKE THAT SAM-I-AM!"
+z <- "DO WOULD YOU LIKE GREEN EGGS AND HAM?"
+
+str_c(x,y,z, collapse = " ")
+```
+
+### exercise 002
+
+>Now use a vector which contains x,y,z and NA and make it a single sentence using paste ,do the same by the same function you used for exercise1 .Can you spot the difference .
+
+```{r}
+paste(c(x, y, z, NA),collapse = ". ")
+str_c(c(x, y ,z ,NA),collapse = ". ")
+```
+
+### exercise 003
+
+>Install the babynames dataset, find the vector of length of the babynames using stringr functions. You may wonder nchar can do the same so why not use that. Try finding out the difference
+
+```{r}
+(babynames %>%
+  pull(name) %>%
+  str_length()) %>%
+  identical(babynames %>%
+              pull(name) %>%
+              nchar())
+
+```
+
+### exercise 004
+
+>Create a string name with your name. Use str_sub to get the last character and the last 5 characters.
+
+```{r}
+
+# last character
+"Daniel" %>%
+  str_sub(-1)
+
+# last 5 characters
+"Daniel" %>%
+  str_sub(-5)
+```
+
+### exercise 005
+
+>In the mtcars dataset rownames, find all cars of the brand Merc
+
+```{r}
+mtcars %>% 
+  as_tibble(rownames = "brands") %>%  # new col rownames
+  filter(str_detect(brands, "Merc")) %>%
+  pull(1)
+  
+```
+
+### exercise 006
+
+>Use the same mtcars rownames ,find the total number of times “e” appears in that
+
+```{r}
+mtcars %>% 
+  as_tibble(rownames = "brands") %>%  # new col rownames
+  pull(1) %>% 
+  str_count("e") %>%
+  sum()
+```
+
+### exercise 007
+
+>Suppose you have a string like this `j <- "The_quick_brown_fox_jumps_over_the_lazy_dog"`
+split it in words using a stringr function
+
+```{r}
+j <- "The_quick_brown_fox_jumps_over_the_lazy_dog"
+
+
+j %>%
+  str_split("_") %>%  # returns a list
+  flatten_chr()  # to vector
+
+```
+
+### exercise 008
+
+>On the same string we need the first word splitted but the rest intact
+
+```{r}
+j %>%
+  str_split("_", n = 2) %>%
+  flatten_chr()
+```
+
+>on the same string we want the first “_” replaced by “–” and then all the “_” replaced by “–”
+
+```{r}
+j %>% 
+  str_replace("_", "-")
+
+j %>%
+  str_replace_all("_", "-")
+```
+
+
+na_string_vec <- c(“The_quick_brown_fox_jumps_over_the_lazy_dog”,NA)
+
+```{r}
+na_string_vec <- c("The_quick_brown_fox_jumps_over_the_lazy_dog", NA)
+
+
+na_string_vec %>%
+  str_replace_na()
+```
+
+
+
+---
+
+## part 2
+
+https://www.r-exercises.com/2018/01/22/stringr-basic-functions-exercises/
+
+### exercise 01
+
+>For a warm up, make a new dataframe based on the gapminder data with one row per country and two columns, country and continent.  Name it simply df
+
+```{r}
+library(gapminder)
+
+gapminder <-
+  gapminder %>%
+  as_tibble()
+
+
+df <-
+  gapminder %>%
+  select(1:2) %>%
+  distinct(country, .keep_all = T)
+
+df %>%
+  head(5)
+```
+
+### exercise 02
+
+>Use a stringr function to find out what the average length of the country names are, as they appear in the data-set.
+
+```{r}
+df %>%
+  select(2, everything()) %>% 
+  mutate(nm_length = str_length(country)) %>%
+  summarize(avg_length = mean(nm_length, na.rm = T)) %>%
+  map_dbl(round, 3)
+  
+```
+
+### exercise 03
+
+Extract the first and last letter of each country’s name. Make a frequency plot for both. Here you can use base-R function table.
+
+```{r, fig.height=3, fig.width=4}
+
+# create 'first' and 'last' vars
+df_modified <-
+  df %>%
+  mutate(first = str_sub(country, 0, 1),
+         last = str_sub(country, -1)) %>%
+  select(continent, everything())
+
+# plot first letter
+df_modified %>%
+  count(first, sort = T) %>%
+  ggplot(aes(fct_reorder(first, -n), n)) +
+  geom_lollipop(color = "darkgreen") +
+  scale_y_continuous(breaks = seq.int(0,16,2)) +
+  labs(title = "Most frequent first letter for Countries",
+       x = "", y = "") +
+  theme_minimal()
+
+# plot last letter
+df_modified %>%
+  count(last, sort = T) %>%
+  ggplot(aes(fct_reorder(last, -n), n)) +
+  geom_lollipop(color = "darkgreen", size = .5, point.size = 1.6) +
+  scale_y_continuous(breaks = seq.int(0,50,10)) +
+  labs(title = "Most frequent last letter for Countries",
+       x = "", y = "") +
+  theme_minimal()
+  
+```
+
+I could use that plot with balls nad few values
+
+### exercise 04
+
+>What countries have the word “and” as part of their name?
+
+```{r}
+df %>%
+  filter(str_detect(country, " and "))
+     
+```
+
+### exercise 05
+
+>Delete all instances of "," and "." from the country names.
+
+```{r}
+
+# check occurencies
+df %>%
+  filter(str_detect(country, ("\\.")))
+  
+
+# solution
+df %>%
+  mutate(country = str_replace_all(country, "\\,|\\.", " ")) %>%
+  filter(str_detect(country, ("Congo|Korea|Yemen")))
+
+```
+
+### exercise 06
+
+>Use `str_dup` and ` str_c`  to generate the vector ` c("mouse likes cat very much", "mouse likes cat very very much", "mouse likes cat very very very much")` .
+
+
+```{r}
+
+# solution
+str_c("mouse likes cat ",  str_dup("very ", 1:3), "much")
+
+
+# solution with piping  
+str_dup("very ", 1:3) %>%
+  str_c("mouse likes cat ",  ., "much")
+```
+
+### exercise 07
+
+Imagine you are creating an app to explore the Gapminder data; the tool you are using can only accommodate country names of 12 characters. Therefore, you decide to shorten the names from the right, such that if the country name is longer than 12 characters, you trim it to 11 and add a full stop. 
+
+```{r}
+
+# using str_trunc()
+dat1 <-
+  df %>%
+  mutate_at(1, as.character) %>% 
+  mutate(trunc_w_1 = str_trunc(country, 11, ellipsis = ".")) 
+
+
+# alternative approach
+dat2 <-
+  df %>%
+  select(-2) %>% 
+  mutate_at(1, as.character) %>%
+  mutate(nchar= nchar(country),
+         trunc_w_2 = if_else(nchar > 12, str_trunc(country, 11, ellipsis = "."),
+                           country))
+
+
+# check some truncated country names
+vector_one <-
+  dat2 %>%
+  filter(str_detect(country, "Central|Bosnia|Trinid|Domin")) %>%
+  pull(3)
+
+
+vector_two <-
+  dat1 %>%
+   filter(str_detect(country, "Central|Bosnia|Trinid|Domin")) %>%
+  pull(3)
+
+# verify results are identical
+vector_one %>% identical(vector_two)
+```
+
+### exercise 08
+
+> sentences is a character vector of 720 sentences that loads to your environment when you load the stringr package. Extract all two-character words from it and plot their frequency.
+
+
+```{r, fig.height=3, fig.width=4}
+
+# extract 2-char words
+two_char_words <-
+  sentences %>% 
+  str_to_lower() %>%
+  str_split(" ") %>%  # split string into words
+  flatten_chr() %>%
+  keep(~str_length(.x) == 2) %>%
+  enframe(" ", "two_chr") %>%
+  count(two_chr, sort = T) %>%
+  filter(!two_chr %in% c("ii", "st", "so"))
+  
+
+# plot
+two_char_words %>%
+  ggplot(aes(fct_reorder(two_chr, n), n)) +
+  geom_lollipop(color = "steelblue4") +
+  scale_y_continuous(limits = c(0, 150),
+                     breaks = seq.int(0, 140, 20)) +
+  coord_flip() +
+  labs(title = "Most frequent 2-character words",
+       x = "", y = "") +
+  theme_minimal()
+
+```
+
+### exercise 09
+
+>Convert the names to lower case and count what characters are the most common in the country names overall.
+
+```{r, fig.height=3, fig.width=4}
+
+
+chr_tab_df <-
+  df %>%
+  pull(country) %>%
+  str_to_lower() %>%
+  str_c(collapse = "") %>%
+  str_split("") %>%
+  as_tibble(.name_repair = "minimal") %>%
+  rename("character" = 1) %>%
+  count(character, sort = T)
+
+
+# plot
+chr_tab_df %>%
+  ggplot(aes(fct_reorder(character, -n), n)) +
+  geom_lollipop(color = "steelblue2") +
+  scale_y_continuous(limits = c(0, 200),
+                     breaks = seq.int(0, 200, 25)) +
+  labs(title = "Most common character in Country names",
+       x = "", y = "") +
+  theme_minimal()
+
+```
+
+### exercise 010
+
+>“A” is the most used character. What is the country that takes this the furthest and has the most “a”s in its name?
+
+```{r, fig.height=3, fig.width=4}
+df %>%
+  select(2,1) %>% 
+  mutate(tot_a = str_count(country, "a")) %>%
+  arrange(desc(tot_a)) %>%
+  head(16) %>% 
+  ggplot(aes(fct_reorder(country, tot_a), tot_a)) +
+  geom_lollipop() +
+  #geom_bar(stat = "identity") +
+  coord_flip() +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 10,
+                                  face = "bold")) +
+  labs(title = "Country Names with the most a's",
+       x = "", y = "") 
+    
+    
+```
+
+
+---
+
+## part 3
+
+https://www.r-exercises.com/2018/10/01/pull-the-right-strings-with-stringr-solutions/
+
+### data
+
+```{r}
+addresses <- 
+  c("14 Pine Street, Los Angeles", "152 Redwood Street, Seattle", 
+    "8 Washington Boulevard, New York")
+
+products <- 
+  c("TV ", " laptop", "portable charger", "Wireless Keybord" , " HeadPhones " )
+
+long_sentences <- 
+  stringr::sentences[1:10]
+
+field_names <-
+  c("order_number", "order_date", "customer_email",
+    "product_title", "amount")
+
+employee_skills <-
+  c("John Bale (Beginner)", "Rita Murphy (Pro)",
+    "Chris White (Pro)", "Sarah Reid (Medium)")
+
+
+addresses
+products
+long_sentences
+field_names
+employee_skills
+```
+
+### exercise 1
+
+>Normalize the addresses vector by replacing capitalized letters with lower-case ones.
+
+```{r}
+addresses %>%
+  str_to_lower()
+```
+
+### exercise 2
+
+>Pull only the numeric part of the addresses vector.
+
+```{r}
+
+addresses %>%
+  str_extract_all("[:digit:]+")
+
+# also
+addresses %>%
+  str_extract_all("[:digit:]{1,3}") %>%  # this is the answer
+  modify_depth(1, as.numeric) %>%   # to numeric
+  as_vector()  # as a numeric vector
+```
+
+### exercise 3
+
+>Split the addresses vector into two parts: address and city. The result should be a matrix.
+
+```{r}
+
+addresses %>%
+  str_remove("[:digit:]{1,3}") %>%
+  str_trim() %>%
+  str_split(",", simplify = T)
+```
+
+### exercise 4
+
+>Now try to split the addresses vector into three parts: house number, street and city. The result should be a matrix.
+
+_Hint: use a regex lookbehind assertion_
+
+```{r}
+addresses %>%
+  str_split("(?<=[:digit:]) |, ",  simplify = T) 
+```
+
+### exercise 5
+
+>In the long_sentences vector, for sentences that start with the letter “T” or end with the letter “s”, show the first or last word respectively. If the sentence both starts with a “T” and ends with an “s”, show both the first and the last words. Remember that the actual last character of a sentence is usually a period.
+
+```{r}
+long_sentences %>% str_extract_all("^T[A-z]+|[A-z]+s\\.$")
+```
+
+### exercise 6
+
+>Show only the first 20 characters of all sentences in the long_sentences vector. To indicate that you removed some characters, use two consecutive periods at the end of each sentence.
+
+```{r}
+
+long_sentences %>%
+  str_trunc(22, ellipsis = "..") 
+
+# without specifying the ellipsis (3 by default)
+long_sentences %>%
+  str_trunc(23) %>%
+  str_replace_all("\\.+", "\\.\\.")
+```
+
+### exercise 7
+
+>Normalize the products vector by removing all unnecessary whitespaces (both from the start, the end and the middle), and by capitalizing all letters
+
+```{r}
+products %>%
+  str_trim() %>%
+  str_to_upper()
+```
+
+* `str_trim()` removes whitespace from start and end of string 
+
+* `str_squish()` also reduces repeated whitespace inside a string
+
+```{r}
+products %>%
+  str_squish() %>%
+  str_to_upper()
+```
+
+### exercise 8
+
+>Prepare the field_names for display, by replacing all of the underscore symbols with spaces, and by converting it to the title-case.
+
+```{r}
+field_names %>%
+  str_replace_all("_", " ") %>%
+  str_to_title()
+  
+```
+
+### exercise 9
+
+Align all of the field_names to be with equal length, by adding whitespaces to the beginning of the relevant strings.
+
+```{r}
+# 14
+field_names %>%
+  str_pad(14, "left")
+```
+
+### exercise 10
+
+>In the employee_skills vector, look for employees that are defined as “Pro” or “Medium”. Your output should be a matrix that have the employee name in the first column, and the skill level (without parenthesis) in the second column. Employees that are not qualified should get missing values in both columns.
+
+```{r}
+employee_skills %>%
+  str_match(., "([A-z ]*) \\((Pro|Medium)\\)") %>%
+  .[, 2:3]
+```
+
+
+---
+
+```{r}
+sessionInfo()
+```
+

@@ -1,0 +1,309 @@
+---
+title: "Untitled"
+author: "DanielH"
+date: "April 12, 2019"
+output:
+  github_document:
+    toc: true
+    toc_depth: 2
+  html_document: default
+  html_notebook:
+    theme: readable
+  pdf_document: default
+  keep_md: yes
+---
+
+```{r, message=FALSE}
+
+library(tidyverse)
+library(lubridate)
+library(maps)
+```
+
+source: http://www.storybench.org/getting-started-stringr-textual-analysis-r/
+
+```{r, message=FALSE}
+
+path_1 <- "http://storybench.org/reinventingtv/abc7ny.csv"
+
+path_2 <-  "http://storybench.org/reinventingtv/kcra.csv"
+
+abc_dat_raw <- read_csv(path_1)
+
+kcra_dat_raw <- read_csv(path_2)
+```
+
+
+## data wrangling
+
+First we fix the datetime column by converting it to `posixct` format
+
+```{r}
+
+abc_dat <-
+  abc_dat_raw %>%
+  mutate(datetime = str_replace_all(datetime, "at", ""),
+         datetime = mdy_hm(datetime))
+
+
+kcra_dat <-
+  kcra_dat_raw %>%
+  mutate(datetime = str_replace_all(datetime, "at", ""),
+         datetime = mdy_hm(datetime))
+  
+```
+
+As we can see there's a problem with the second dataset `kcra_dat`. 5 cases(rows) failed to parse.
+
+We go back to the raw dataset, add row identifiers, locate those cases, then fix them and try to convert again
+
+```{r}
+
+# locate problematic rows, NAs that is
+kcra_dat %>%
+  mutate(row_number = 1:13020, # add row index
+         datetime = str_replace_all(datetime, "at", "")) %>%
+  select(row_number, everything()) %>% 
+  filter(is.na(datetime)) 
+
+# fix problems
+kcra_dat <-
+  kcra_dat_raw %>%
+  mutate(row_number = 1:13020, # add row index
+         datetime = if_else(row_number %in% c(300, 396, 1382, 1472, 3037),
+                            paste0(datetime, " at 04:22PM"), datetime),
+         datetime = str_replace_all(datetime, "at", ""),
+         datetime = mdy_hm(datetime)) %>%
+  select(-row_number)  # remove the row index
+
+# check
+kcra_dat %>%
+  summary()
+
+```
+
+## combine the datasets
+
+first of all, let's check date-times
+
+```{r}
+kcra_dat %>%
+  pull(datetime) %>%
+  range()
+
+
+abc_dat %>%
+  pull(datetime) %>%
+  range()
+```
+
+We see that the same time range is covered in both datasets.
+
+Since our datasets have the same number of cols, we can combine/merge them using the `bind_rows()` function
+
+We might want to separate each data frame again later, so including an ID (like data_id) that allows me to see what data set each headline originally came from is a good idea, we set the parameter: `.id = "data_id"`
+
+```{r}
+
+merged_dat <-
+  abc_dat %>%
+  bind_rows(kcra_dat, .id = "data_id") %>%
+  mutate_at(1, factor, labels = c("abc7", "kcra"))
+
+# some cleaning
+rm(abc_dat, abc_dat_raw, kcra_dat, kcra_dat_raw, path_1, path_2)
+
+# test
+merged_dat %>%
+  count(data_id)
+
+# check new dataframe
+merged_dat %>%
+  glimpse()
+```
+
+We have to remember that:
+
+* data_id = 1  ------->  Abc7
+* data_id = 2  ------->  Kcra
+
+```{r}
+
+# extract the 'headline' variable, first five cases
+headline_var <-
+  merged_dat %>%
+  select(headline) %>%
+  head(5)
+
+headline_var
+```
+
+If we want to convert our dataframe chunk (which is a list) to vector, we can:
+
+```{r}
+
+# method one
+var_one <-
+  headline_var %>%
+  unlist() 
+  
+# method two
+var_two <-
+  headline_var %>%
+  pull(headline) 
+
+# ------------- check they're the same
+var_one %>%
+  unname() %>%
+  identical(var_two)
+```
+
+If we want to remove a character, for example `-`
+
+```{r}
+var_two
+
+var_two %>%
+  str_replace_all("-", " ")
+```
+
+---
+
+##### pasting
+
+If we want to collapse the single distinct elements of a vector into a single string for example `var_two` which has 5 distinct elements
+
+```{r}
+
+var_two %>%
+  length()
+
+var_two %>% 
+  paste0(collapse = ";") %>%
+  length()
+```
+
+##### finding words
+
+I might also curious about the first few words in the teaser associated with each headline. Let’s assume I want to see the frequency of each word by news feed (or `data_id`). I can use the `stringr::word()` function to extract the first three words and store it in a new variable teaser_3_words.
+
+```{r}
+
+merged_dat_3_words <-
+  merged_dat %>%
+  mutate(teaser_3_words = word(headline, 1,3)) %>%
+  select(data_id, teaser_3_words, everything()) 
+
+
+merged_dat_3_words %>%
+  count(teaser_3_words, sort = TRUE) %>% 
+  head(10)
+```
+
+---
+
+### joins
+
+We'll use a join here using data from the `maps` package: First of all, we have to fix the `name` variable
+
+##### create `city_id` in `us_cities_dat`
+
+```{r}
+
+# extract tibble
+us_cities_dat_raw <-  
+  maps::us.cities %>%
+  as_tibble()
+
+# fix col `name`
+us_cities_dat <-
+  us_cities_dat_raw %>%
+  mutate(city_id = str_remove_all(name, "[:upper:]{2}$"),
+         city_id = str_trim(city_id),
+         city_id = str_to_lower(city_id)) %>%
+  select(city_id, everything())
+
+```
+
+##### create `city_id` in `merged_dat`
+
+First we create a vector of cities names to use as pattern in str_detect()
+
+```{r}
+
+# ctities vector
+vector_cit <-
+  us_cities_dat %>%
+  pull(city_id) %>%
+  paste0(sep = "", collapse = " | ") 
+```
+
+__NOTE__: If we don’t include spaces around the `collapse = " | "` argument we would get a match for the city mission (for Mission, TX) in the following case
+
+`"Trump to attend commissioning of USS Gerald R. Ford warship"`
+
+Now we can use the vector to filter the merged_dat dataset
+
+```{r}
+matched_merged_dat <-
+  merged_dat %>%
+  mutate(headline = stringr::str_to_lower(headline)) %>%
+  filter(str_detect(headline, vector_cit)) %>%
+  select(headline, everything())
+```
+
+As we can see the original `merged_dat` has been reduced from 22765 rows to only 3401 
+
+```{r}
+
+# create var 'city_id'
+matched_merged_dat <-
+  matched_merged_dat %>%
+  mutate(city_id = str_extract(.$headline,
+                               pattern = paste(vector_cit, collapse = "|")),
+         city_id = stringr::str_trim(city_id)) 
+
+
+# check
+matched_merged_dat %>%
+  count(city_id, sort = T) %>%
+  head(4)
+```
+
+We now use `dplyr::inner_join()` to merge the `matched_merged_dat` and the `us_cities_dat`  
+
+```{r}
+
+# merge datasets
+map_news_data <-
+  matched_merged_dat %>%
+  inner_join(us_cities_dat, by = "city_id")
+
+# check
+map_news_data %>%
+  glimpse()
+```
+
+Now we want to separate the datetime variable into components
+
+```{r, message=FALSE}
+
+map_news_data %>%
+  separate(datetime, into = c("year", "month", "day",  "hour", "min")) %>%
+  select(year:min) %>% count(month)
+
+
+# alternative, better way
+map_news_data_processed <-
+  map_news_data %>%
+  mutate(year = year(datetime),
+         month = month(datetime, label = T, abbr = F),
+         day = day(datetime),
+         hour = hour(datetime),
+         min = minute(datetime)) %>%
+  select(year:min, everything())
+```
+
+
+
+

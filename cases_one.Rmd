@@ -1,0 +1,715 @@
+---
+title: "cases 1"
+author: "DanielH"
+date: "April 1, 2019"
+output:
+  github_document:
+    toc: true
+    toc_depth: 2
+  html_document: default
+  html_notebook:
+    theme: readable
+  pdf_document: default
+  keep_md: yes
+---
+
+```{r, message=FALSE}
+
+library(tidyverse)
+library(rvest)
+library(dslabs)
+library(janitor)
+library(lubridate)
+library(scales)
+library(pdftools)
+library(knitr)
+library(ggthemes)
+library(ggrepel)
+library(listviewer)
+
+
+# set theme
+theme_set(theme_minimal())
+```
+
+## case one: US murders data
+
+We extract our data from Wikipedia
+
+```{r}
+
+# get URL
+url <- 
+  paste0("https://en.wikipedia.org/w/index.php?title=",
+         "Gun_violence_in_the_United_States_by_state&direction=prev&oldid=810166167")
+
+# read Wikipedia html
+murders_dat_raw <-
+  url %>%
+  read_html() %>%
+  html_nodes("table") %>%
+  html_table() %>%
+  .[[2]] %>%
+  setNames(c("state", "population", "total", "murder_rate"))
+```
+
+##### some cleaning
+
+First, following Rafa' s approach, we remove the dots. We start by identifiying the cols where there are dots
+
+```{r, warning=FALSE}
+
+# define function
+commas <- 
+  function(x) {
+  x %>%
+    str_detect(",") %>%
+    any()
+}
+
+
+# call function
+murders_dat_raw %>% 
+  summarise_all(commas)
+
+
+# check some rows
+murders_dat_raw %>%
+  filter(str_detect(state, "^Ca|York|Tex"))
+
+```
+
+So, we have commas for cols 2 and 3, `population` and `total`. We now create a function `remove_commas()` to remove commas
+
+```{r}
+
+# define function
+remove_commas <- function(x) {
+  x %>%
+    str_replace_all(",", "") 
+}
+
+
+# call function and check
+murders_dat_raw %>%
+  filter(str_detect(state, "^Ca|York|Tex")) %>% 
+  mutate_at(c(2,3), remove_commas) 
+```
+
+As we can see we have removed commas from cols 2 and 3. We save the object and also divide col 4 by 100
+
+```{r}
+
+# wrangling
+murders_dat <-
+  murders_dat_raw %>% 
+  mutate_at(c(2,3), remove_commas) %>% 
+  mutate_at(4, ~./100)
+
+
+# check
+murders_dat %>%
+  sample_n(4)
+```
+
+#### string splitting
+
+A very common data wrangling operation is string splitting.
+
+Suppose we did not have the functions `read_csv` or `read.csv` available to us. We instead have to read a csv file using the tidyverse function `read_lines()` like this
+
+```{r}
+# read data
+filename <- system.file("extdata/murders.csv", package = "dslabs")
+lines <- 
+  filename %>%
+  read_lines()
+
+# check
+lines %>% head()
+```
+
+As we can see we have strings with _state_, _abb_, _region_, _population_, _total_ in them. We should have separate columns for each of those elements
+
+```{r}
+# split and check some elements of the outputted list
+lines %>%
+  str_split(",") %>%   # output is a list
+  head(4)
+```
+
+As we can see the first element of the output list contains column names. We can extract those names and save them to a variable. Then, we extract the remaining elements of the list and save them to a list object
+
+```{r}
+
+# extract column names
+column_names <-
+  lines %>%
+  str_split(",") %>%
+  .[[1]]
+
+
+# remaining list
+lines_list <-
+  lines %>%
+  str_split(",") %>%
+  magrittr::extract(-1) 
+
+```
+
+We now create a tibble
+
+```{r}
+
+# create tibble
+states_dat <-
+  lines_list %>%
+    {tibble(country = map_chr(.,1),
+            abb = map_chr(.,2),
+            region = map_chr(., 3),
+            population = map_chr(., 4),
+            total = map_chr(., 5))  %>%
+        setNames(column_names)} %>%
+     mutate_at(c(4,5), as.numeric)
+
+
+# check
+states_dat %>%
+  filter(str_detect(state, "^Ca|York|Tex"))
+
+```
+
+A faster approach would be
+
+```{r}
+
+# cleaning
+states_dat2 <-
+  lines_list %>% 
+  transpose() %>%
+  setNames(column_names) %>% 
+  as_tibble() %>%
+  map_df(unlist) %>%
+  mutate_at(c(4,5), as.numeric) 
+
+
+# check
+states_dat2 %>%
+  filter(str_detect(state, "^Ca|York|Tex"))
+
+```
+
+An even faster approach is
+
+```{r, warning=FALSE}
+
+# cleaning
+states_dat3 <-
+  lines %>%
+  str_split(",", simplify = T) %>%
+  .[-1,] %>% 
+  as_tibble(.name_repair = NULL) %>%
+  setNames(column_names) %>%
+  mutate_at(c(4,5), as.numeric)
+
+
+# check
+states_dat3 %>%
+  filter(str_detect(state, "^Ca|York|Tex"))
+```
+
+We now cross check our tibbles, that is we check whether our tibbles are the same
+
+```{r}
+
+# 3 vs 2
+states_dat3 %>%
+  identical(states_dat2)
+# 1 vs 2
+states_dat %>%
+  identical(states_dat2)
+  
+```
+
+## case two: heights
+
+The following heights were obtained using a web form in which students were asked to enter their heights. They could enter anything, but the instructions asked for height in inches, a number, _unfortunately the column vector with the reported heights had several non-numeric entries and as a result became a character vector_: 
+
+```{r}
+
+# get data and convert to tibble
+reported_heights <-
+  reported_heights %>%
+  as_tibble()
+
+# check 40 random cases
+set.seed(5931)
+reported_heights %>% 
+  select(3) %>% 
+  filter(str_detect(height, "foot|yyy|>|cm|'|inch")) %>%
+  pull(height) %>%
+  sample(40)
+```
+
+We can immediately visualize the entries not successfully converted to numeric (coerced NAs), 81 cases
+We create a new variable `new_height` containing the cases unsuccesfully converted to numeric(dbl) and therefore stored as `NA`
+
+```{r}
+reported_heights %>%
+  mutate(new_height = as.numeric(height)) %>%
+  filter(is.na(new_height)) %>%
+  select(3,4)
+```
+
+As we can see there's plenty of symbols (81) that can't be converted to numeric, thus R defaults to character type(`height`).
+
+We now want to fix the problematic entries that were converted to `NA`s. To do it programmatically, we can use regular expressions to define patterns
+
+We write a function to automatically do this. We keep entries that either result in NAs when applying as.numeric or are outside a range of plausible heights
+
+```{r}
+
+# define function
+not_inches <- 
+  function(x, smallest = 50, tallest = 84){
+    inches <- suppressWarnings(as.numeric(x))
+    ind <- is.na(inches) | inches < smallest | inches > tallest
+ ind
+  }
+
+# call function
+reported_heights %>%
+  filter(not_inches(height)) %>% 
+  pull(height) %>%
+  length()
+
+
+# define improved function which also handles centimeters
+not_inches_or_cm <- 
+  function(x, smallest = 50, tallest = 84){
+    inches <- suppressWarnings(as.numeric(x))
+    ind <- !is.na(inches) & ((inches >= smallest & inches <= tallest)|
+                               (inches/2.54 >= smallest & inches/2.54 <= tallest)) 
+    !ind
+  }
+
+
+# call fucntion
+reported_heights %>%
+  filter(not_inches_or_cm(height)) %>% 
+  pull(height) %>%
+  length()
+```
+
+We see that we have 292 problematic entries based on our first function (not inches) and 200 based on the second one (neither inches nor centimeters)
+
+We see that three patterns can be used to define three large groups within these parsing failures
+
+
+1. pattern of the form `x'y` or `x' y''` or `x'y"` with x and y representing feet and inches respectively.
+
+2. pattern of the form `x.y` or `x,y` with x feet and y inches
+
+3. entries that were reported in centimeters rather than inches
+
+
+__Plan of attack:__ 
+
+we will convert entries fitting the first two patterns into a standardized one. We will then leverage the standardization to extract the feet and inches and convert to inches. 
+
+We will then define a procedure for identifying entries that are in centimeters and convert them to inches. 
+
+After applying these steps, we will then check again to see what entries were not fixed and see if we can tweak our approach to
+be more comprehensive.
+
+At the end, we hope to have a script that makes web-based data collection methods robust to the most common user mistakes.
+
+We now write a function to try to fix the problems (length 200) we had when converting to numeric. We take care of the various symbols and 
+
+```{r}
+
+# we save the problematic entries to an object named 'problems'
+problems <- 
+  reported_heights %>%
+  filter(not_inches_or_cm(height)) %>%
+  pull(height)
+
+
+# define function to fix symbols
+convert_format <- 
+  function(s){
+    s %>%
+      str_replace("feet|foot|ft", "'") %>% #convert feet symbols to '
+      str_replace_all("inches|in|''|\"|cm|and", "") %>% #remove inches and other symbols
+      str_replace("^([4-7])\\s*[,\\.\\s+]\\s*(\\d*)$", "\\1'\\2") %>% #change x.y, x,y x y
+      str_replace("^([56])'?$", "\\1'0") %>% #add 0 when to 5 or 6
+      str_replace("^([12])\\s*,\\s*(\\d*)$", "\\1\\.\\2") %>% #change european decimal
+      str_trim() #remove extra space
+  }
+
+
+
+# define function to convert from words to numbers
+words_to_numbers <- 
+  function(s){
+    s %>%
+      str_to_lower() %>%
+      str_replace_all(c("zero" = "0",
+                        "one" = "1",
+                        "two" = "2",
+                        "three" = "3",
+                        "four" = "4",
+                        "five" = "5",
+                        "six" = "6",
+                        "seven" = "7",
+                        "eight" = "8",
+                        "nine" = "9",
+                        "ten" = "10",
+                        "eleven" = "11") )
+  }
+
+
+```
+
+
+```{r}
+# number of problems
+problems %>% 
+  length()
+```
+
+Let’s see what proportion of these fit our pattern after the processing steps we developed above:
+
+```{r}
+
+# fix some problems and save object
+converted <- 
+  problems %>%
+  str_replace("feet|foot|ft", "'") %>% # convert feet symbols to '
+  str_replace("inches|in|''|\"", "") %>% # remove inches symbols
+  str_replace("^([4-7])\\s*[,\\.\\s+]\\s*(\\d*)$", "\\1'\\2") # change format
+ 
+
+# pattern
+pattern <- "^[4-7]\\s*'\\s*\\d{1,2}$"
+
+# match converted against pattern and save object
+index <-
+  converted %>%
+  str_detect(pattern) 
+
+# proportion of cases matching the pattern
+index %>%
+  mean()
+
+```
+
+We now examine the remaining cases
+
+```{r}
+# subset converted by cases not matching the pattern
+converted[!index]
+
+```
+
+Four clear patterns here:
+
+1. Many students measuring exactly 5 or 6 feet did not enter any inches, for example `6'`, and our pattern
+requires that inches be included.
+2. Some students measuring exactly 5 or 6 feet entered just that number.
+3. Some of the inches were entered with decimal points. For example `5'7.5''`. Our pattern only looks
+for two digits.
+4. Some entries have spaces at the end, for example `5 ' 9`.
+
+Although not as common, we also see the following problems:
+
+5. Some entries are in meters and some of these use European decimals: 1.6, 1,70.
+6. Two students added cm.
+7. A student spelled out the numbers: Five foot eight inches
+
+---
+
+##### the `extract()` function
+
+When we want to separate to elements of a string/character vector we can use `extract()`. This function does the same thing as `separate()` but it lets us use regular expression to extract the desired values. For example
+
+```{r}
+s <- c("5'10", "6'1")
+tab <- data.frame(x = s)
+```
+
+
+If we want to use the`separate()` function we would write 
+
+```{r}
+tab %>%
+  separate(x, c("feet", "inches"), sep = "'")
+```
+
+Same thing done using the `extract()` function
+
+```{r}
+tab %>%
+  extract(x, c("feet", "inches"), regex = "(\\d)'(\\d{1,2})")
+```
+
+The `(\\d)'(\\d{1,2})` regex means: one digit followed by ' followed by 1/2 digits
+
+---
+
+##### putting all together
+
+We start by cleaning up the height column so that the heights are closer to a feet’inches format. We added
+an original heights column so we can compare before and after.
+
+The pattern regex `^([4-7])\\s*'\\s*(\\d+\\.?\\d*)$` decoded:
+
+* `^([4-7])\\s*`  starts with a digit between 4 and 7 followed by none or more white space
+
+* `'\\s*` the `'` symbol followed by zero or more white space
+
+* `(\\d+\\.?\\d*)$`  one or more digits followed by none or one dot then zero or more digits then end of string
+
+```{r}
+
+# pattern
+pattern <- "^([4-7])\\s*'\\s*(\\d+\\.?\\d*)$"
+
+smallest <- 50
+tallest <- 84
+
+# clean tibble
+new_heights <- 
+  reported_heights %>%
+  mutate(original = height, height = words_to_numbers(height) %>% convert_format()) %>%
+  extract(height, c("feet", "inches"), regex = pattern, remove = FALSE) %>%
+  mutate_at(c("height", "feet", "inches"), as.numeric) %>%
+  mutate(guess = 12*feet + inches) %>%
+  mutate(height = case_when(!is.na(height) & between(height, 
+                                                     smallest, tallest) ~ height, #inches
+                            !is.na(height) & between(height/2.54, 
+                                                     smallest, tallest) ~ height/2.54, #centimeters
+                            !is.na(height) & between(height*100/2.54, 
+                                                     smallest, tallest) ~ height*100/2.54, #meters
+                            !is.na(guess) & inches < 12 & between(guess, 
+                                                                  smallest, tallest) ~ guess,  #feet'inches
+                            TRUE ~ as.numeric(NA))) %>%
+select(-guess)
+
+# check tibble
+set.seed(824)
+new_heights %>%
+  mutate(time_stamp = ymd_hms(time_stamp),
+         original = as.numeric(original)) %>%
+  sample_n(6)
+```
+
+
+## case three: extracting tables from a PDF
+
+One of the datasets provided in dslabs shows scientific funding rates by gender in the Netherlands:
+
+```{r}
+# url of the pdf where the table is located
+url <-
+  paste0("http://www.pnas.org/content/suppl/2015/09/16/",
+         "1510159112.DCSupplemental/pnas.201510159SI.pdf")
+
+```
+
+The data comes from a paper published in the Proceedings of the National Academy of Science (PNAS), a
+widely read scientific journal. However, the data is not provided in a spreadsheet, it is in a table in a
+PDF document:
+
+![](imgs/Table_s1.PNG)
+
+
+We could extract the numbers by hand, but this could lead to human error. Instead, we can try to wrangle the data using R. 
+
+We start by downloading the pdf document, then importing into R:
+
+```{r, message=FALSE}
+
+# temp file
+temp_file <- tempfile()
+
+# dowonload file
+download.file(url, temp_file, quiet = T)
+
+# import file into R
+txt <- pdf_text(temp_file)
+
+# remove temp file
+file.remove(temp_file)
+
+```
+
+
+If we examine the object txt
+
+```{r}
+txt %>% str()
+```
+
+As we can see we have imported two character strings. We're interested in the second one, which contains the column names, so we extract it
+
+```{r}
+
+# extract second element of the txt object
+research_funding_rates_raw <-
+  txt %>%
+  .[[2]]
+
+# check
+research_funding_rates_raw 
+```
+
+Examining the object we see that it is a long string and each line on.
+
+Our output is a list with just one element
+
+NOTE: For some reason we're not getting the numeric values in the txt object, so we have to use the `raw_data_research_funding_rates` object included in the `dslabs`
+
+```{r}
+data("raw_data_research_funding_rates")
+```
+
+
+We can use the function `str_split()` with `\n` as pattern, which outputs a list with the lines of the text as elements :
+
+```{r}
+table_raw <-
+  research_funding_rates_raw %>%  # second element of the raw table
+  str_split("\n")
+
+# the first 2 elements contain the title/name of the table
+table_raw %>%
+  pluck(1)
+table_raw %>%
+  pluck(2)
+
+# the information for the column names is in the third and fourth entries
+table_raw %>%
+  pluck(3) %>%
+  str_trim()
+
+table_raw %>%
+  pluck(4) %>%
+  str_trim()
+```
+
+We start with the column information, which is is spread across two lines
+
+```{r}
+
+col_names_1 <-
+  table_raw %>%
+  pluck(3) 
+
+
+col_names_1
+```
+
+* We want to remove anything following the comma 
+
+* Then we split strings separated by space only when there are 2 or more spaces to avoid splitting _Success rates_.
+
+```{r}
+
+col_names_1 <-
+  col_names_1 %>%
+  str_trim() %>% 
+  str_replace_all(",\\s.", "") %>%  # remove ", n" and ", &"
+  str_split("\\s{2,}") %>%
+  flatten_chr()
+
+# check
+col_names_1
+```
+
+We now process the second line
+
+```{r}
+
+col_names_2 <-
+  table_raw %>%
+  pluck(4) 
+
+# check
+col_names_2 
+  
+```
+
+We want to remove any extra space between col names and then split the single string into one string per name
+
+```{r}
+colnames_2 <-
+col_names_2 %>%
+  str_replace_all("\\s+","  ") %>%   # when there are >= 2 spaces replace with one space
+  str_trim() %>%  # trim extra space after 'Women'
+  str_split("\\s+") %>% 
+  flatten_chr()
+
+# check
+colnames_2
+```
+
+Then we join these col names to generate one name for each column
+
+```{r}
+col_names_1
+colnames_2
+
+tmp_names <- str_c(rep(col_names_1, each = 3), colnames_2[-1], sep = "_")
+
+# add "Discipline"
+column_names_vector <-
+  tmp_names %>%
+  c(colnames_2[1], .) %>%  # add discipline upfront 
+  str_to_lower() %>%
+  str_replace_all("\\s", "_")
+
+```
+
+Now we get the actual data which are stored in elements 6 to 14
+
+```{r}
+
+clean_tbl <-
+  raw_data_research_funding_rates %>%
+  str_split("\n") %>%
+  .[[1]] %>%
+  .[6:14] %>% 
+  str_trim %>%
+  str_split("\\s{2,}", simplify = T) %>%  # split where 2 or more spaces, matrix returned
+  as_tibble() %>% 
+  setNames(column_names_vector) %>%  # set column names
+  mutate_at(-1, parse_number)
+
+
+# check
+clean_tbl %>%
+  head() %>% 
+  kable()
+
+
+clean_tbl %>%
+  summary()
+```
+
+---
+
+```{r}
+sessionInfo()
+```
+
+
+
+
+
+
+
+
+
+
+

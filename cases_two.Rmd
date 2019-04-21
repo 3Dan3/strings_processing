@@ -1,0 +1,226 @@
+---
+title: "cases two"
+author: "DanielH"
+date: "April 9, 2019"
+output:
+  github_document:
+    toc: true
+    toc_depth: 2
+  html_notebook:
+    theme: readable
+  html_document: default
+  pdf_document: default
+  keep_md: yes
+---
+
+```{r, message=FALSE}
+
+library(tidyverse)
+library(rvest)
+library(lubridate)
+```
+
+## matching e-mail addresses
+
+The example that we will discuss consists of matching an email address. We will work with usual email addresses having one (or a similar variant) of the following forms:
+
+* `somename@email.com`
+
+* `somename99@email.com`
+
+* `some.name@email.com`
+
+* `some.name@an-email.com`
+
+* `some.name@an.email.com`
+
+Since our goal is to match an email address, this implies that we need to define a corresponding regex pattern. If we look at the previous email forms it is possible to see that they have a general structure that can be broken into three parts.
+
+1. username
+2. `@`symbol
+3. domain name
+
+#### username
+
+The username pattern can be defined as: `^([a-z0-9_\\.-]+)`
+
+The username pattern starts with a caret `^` to indicate the beginning of the string. Then we have a group indicated with parentheses. It matches one or more lowercase letters, numbers, underscores, dots, or hyphens.
+
+####domain name
+
+The domain name pattern can be defined as: `^([\\da-z\\.-]+)\\.([a-z\\.]{2,6})$`
+
+### complete regular expression pattern for an e-mail address in R:
+
+>`^([a-z0-9_\\.-]+)@([\\da-z\\.-]+)\\.([a-z\\.]{2,6})$`
+
+Let's test this:
+
+```{r}
+# pattern
+email_pat <- "^([a-z0-9_\\.-]+)@([\\da-z\\.-]+)\\.([a-z\\.]{2,6})$"
+
+
+# single e-mail address 
+"gaston@abc.com" %>%
+  str_detect(email_pat)
+
+
+# multiple potential email addresses
+emails <- c("simple@example.com", 
+            "johnsmith@email.gov",
+            "marie.curie@college.edu",
+            "very.common@example.com",
+            "a.little.lengthy.but.ok@dept.example.com",
+            "disposable.style.email.with+symbol@example.com",
+            "not_good@email.address")
+
+
+emails %>%
+  str_detect(email_pat)
+
+
+```
+
+However, if we have a \long" TLD (top-level domain) __exceeding six letters__, our pattern won't match, like in the next example:
+
+```{r}
+# unmatched email (TLD too long)
+"gaston@abc.something" %>%
+  str_detect(email_pat)
+```
+
+## cleaning long jump data
+
+In this example we will work with the Men’s Long Jump World Record Progression data from wikipedia
+
+"https://en.wikipedia.org/wiki/Men%27s_long_jump_world_record_progression#Low_altitude_record_progression_1965%E2%80%931991"
+
+![](imgs/record_tbl.PNG)
+
+```{r}
+
+# extract table to tibble
+wiki_jump <-
+  'https://en.wikipedia.org/wiki/Men%27s_long_jump_world_record_progression' %>% 
+  read_html() %>%
+  html_node('table') %>% 
+  html_table() 
+
+
+# colnames to lower
+colnames(wiki_jump) <- 
+  wiki_jump %>%
+  names() %>%
+  str_to_lower()
+
+# check
+wiki_jump %>%
+  glimpse()
+
+```
+
+#### extracting meters
+
+First, we want to extract meters from col 1.
+
+There are two way to do that. First we can take advantage of the uniform length of the mark column elements: they're all length 4 considering just the digits and the dot, thus we use subset the strings
+
+```{r}
+wiki_jump %>%
+  mutate(mark = str_sub(mark, 1, 6)) %>%
+  head()
+```
+
+Another, more interesting way to do it is through regex
+
+```{r}
+wiki_jump %>%
+  mutate(mark = str_extract(mark, "[0-9]\\.[0-9][0-9]")) %>%
+  mutate_at(1, as.numeric) %>%  #convert to numeric
+  pull(1)
+```
+
+#### extracting country
+
+We now want to extract the country for each case in the _athlete_ column.
+Again, we can first use the sub_string function
+
+```{r}
+wiki_jump %>%
+  mutate(country = str_sub(athlete, -4, -2)) %>%
+  select(1,2, country) %>%
+  pull(3)
+```
+
+We now try to use regex
+
+```{r}
+wiki_jump %>% 
+  mutate(country = str_extract(athlete, "\\(\\w+\\)"),
+         country = str_extract(country, "\\w+"),
+         athlete = str_remove(athlete, "\\(\\w+\\)")) %>%
+  pull(country)
+  
+```
+
+#### cleaning dates
+
+We start by removing the [1] lement at the end of each date
+
+```{r}
+wiki_jump %>%
+  select(date) %>%
+  mutate(clean_date = str_remove(date, "\\[1\\]")) %>%
+  pull(clean_date) %>%
+  head()
+```
+
+We can now extract year, month and day using regex
+
+```{r}
+
+wiki_jump %>%
+  select(date) %>%
+  mutate(clean_date = str_remove(date, "\\[1\\]"),
+         year = str_extract(clean_date, "\\s[0-9]{4}"),
+         month = str_extract(clean_date, "[A-z][a-z]+"),
+         day = str_extract(clean_date, "[0-9]+")) %>%
+  head()
+```
+
+##### all together
+
+```{r}
+
+wiki_jump_cleaned <-
+  wiki_jump %>%
+  mutate(mark = str_extract(mark, "[0-9]\\.[0-9][0-9]"),
+         country = str_extract(athlete, "\\(\\w+\\)"),
+         country = str_extract(country, "\\w+"),
+         athlete = str_remove(athlete, "\\(\\w+\\)"),
+         date = str_remove(date, "\\[1\\]"),
+         year = str_extract(date, "\\s[0-9]{4}"),
+         month = str_extract(date, "[A-z][a-z]+"),
+         day = str_extract(date, "[0-9]+")) %>%
+  select(1:3, country, everything(), date)
+
+
+long_jump_dat <-
+  wiki_jump_cleaned %>%
+  unite("date", year:day, sep = "-") %>%
+  mutate(date = ymd(date)) %>%
+  mutate_at(c(1,2), as.numeric) %>%
+  mutate_at(4, factor)
+
+
+# check
+long_jump_dat %>%
+  sample_n(5)
+  
+```
+
+
+
+
+

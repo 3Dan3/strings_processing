@@ -1,0 +1,342 @@
+---
+title: "stringr 1"
+author: "DanielH"
+date: "April 8, 2019"
+output:
+  github_document:
+    toc: true
+    toc_depth: 2
+  html_document: default
+  html_notebook:
+    theme: readable
+  pdf_document: default
+  keep_md: yes
+---
+
+from the book: https://www.gastonsanchez.com/r4strings/   
+
+```{r, message=FALSE}
+
+library(tidyverse)
+```
+
+
+The package stringr adds more functionality to the base functions for handling strings in R.
+
+#### concatenating with `str_c()`
+
+```{r}
+# default usage
+str_c("May", "The", "Force", "Be", "With", "You")
+
+# # removing zero length objects
+str_c("May", "The", "Force", NULL, "Be", "With", "You", character(0))
+```
+
+NOTE: zero length arguments like NULL and character(0) are silently removed by `str_c()`.
+
+#### number of characters with `str_length()`
+
+```{r}
+# some vector
+text <- c("one", "two", "three", NA, "five")
+
+text %>%
+  str_count()
+```
+
+NOTE: `str_length()` preserves missing values just as `NA`s, plus it converts factors to character
+
+```{r}
+# some factor
+some_factor <- factor(c(1, 1, 1, 2, 2, 2), labels = c("good", "bad"))
+some_factor
+
+# count factor levels, implicit conversion to character
+some_factor %>%
+  str_length() 
+```
+
+###substring with `str sub()`
+
+```{r}
+# some text
+lorem <- "Lorem Ipsum"
+
+# apply str sub
+lorem %>%
+  str_sub(start = 1, end = 5) 
+
+# another example
+"adios" %>%
+  str_sub(1:3)  # this means subset from the first/second/third element on
+
+# some strings
+resto <- c("brasserie", "bistrot", "creperie", "bouchon")
+
+# str_sub  with negative positions
+resto %>%
+  str_sub(start = -4, end = -1)
+
+resto %>%
+  str_sub(start = -5, end = -2)
+  
+```
+
+NOTE: We can also give `str sub()` a set of positions which will be recycled over the string. But even better, we can give `str sub()` a negative sequence,
+
+```{r}
+# extracting sequentially
+lorem %>%
+  str_sub(seq_len(nchar(.)))
+
+# reverse substrings with negative positions
+lorem %>%
+  str_sub(-seq_len(nchar(.)))
+```
+
+NOTE: We can use `str sub()` not only for extracting subtrings but also for replacing substrings:
+
+```{r}
+# replacing 
+lorem <- "Lorem Ipsum"
+str_sub(lorem, 1, 5) <- "Nullam"
+lorem
+
+# equivalently
+lorem %>%
+  str_sub(1,5) -> "Nullam"
+lorem
+
+# replacing with negative positions
+lorem <- "Lorem Ipsum"
+str_sub(lorem, -1) <- "Nullam"
+lorem
+
+# multiple replacements
+lorem <- "Lorem Ipsum"
+str_sub(lorem, c(1, 7), c(5, 8)) <- c("Nullam", "Enim") # means replace position 1:5 and 7:8
+lorem
+
+```
+
+
+### duplication with `str_dup()`
+
+A common operation when handling characters is duplication. `str_dup()` duplicates and concatenates strings within a character vector.
+
+```{r}
+
+# default usage
+"hola" %>%
+  str_dup(3)
+
+# use with different times
+"adios" %>%
+  str_dup(1:3)
+
+# use with a string vector
+words <- c("lorem", "ipsum", "dolor", "sit", "amet")
+
+words %>%
+  str_dup(2)
+```
+
+### padding with `str pad()`
+
+The idea of `str pad()` is to take a string and pad it with leading or trailing characters
+to a specified total width.
+
+`str_pad(string, width, side = "left", pad = " ")`  default inputs
+
+The default padding character is a space (`pad = " "`), and consequently the returned string will appear to be either left-aligned (`side = "left"`), right-aligned (`side = "right"`), or both (`side = "both"`)
+
+```{r}
+# default usage
+"hola" %>%
+  str_pad(width = 7)
+
+# pad both sides
+"adios" %>%
+  str_pad(width = 7, side = "both")
+
+# left padding with #
+"hashtag" %>%
+  str_pad(width = 8, pad = "#")
+
+# pad both sides with -
+"hashtag" %>%
+  str_pad(width = 9, side = "both", pad = "-")
+```
+
+### wrapping with `str_wrap()`
+
+The idea of wrapping a (long) string is to first split it into paragraphs according to the given width, and then add the specied indentation in each line (first line with `indent`, following lines with `exdent`). 
+
+Its default usage has the following form:
+
+`str_wrap(string, width = 80, indent = 0, exdent = 0)`
+
+For instance, consider the following quote (from Douglas Adams) converted into a paragraph:
+
+```{r}
+
+# quote 
+some_quote <-  
+  c("I may not have gone",
+    "where I intended to go,",
+    "but I think I have ended up",
+    "where I needed to be")
+
+# some_quote in a single paragraph
+some_quote <-
+  some_quote %>%
+  paste0(collapse = " ")
+```
+
+Now, say we want to display the text of some quote within some pre-specified column width (e.g. width of 30). We can achieve this by applying `str_wrap()` and setting the argument `width = 30`
+
+```{r}
+# display paragraph with width=30
+cat(str_wrap(some_quote, width = 30))
+```
+
+Or equivalently
+
+```{r}
+some_quote %>%
+  str_wrap(width = 30) %>%
+  cat()
+```
+
+Besides displaying a (long) paragraph into several lines, we may also wish to add some indentation. Here's how we can indent the rst line, as well as the following lines:
+
+```{r}
+# display paragraph with first line indentation of 2
+cat(str_wrap(some_quote, width = 30, indent = 2), "nn")
+
+# equivalently
+some_quote %>%
+  str_wrap(width = 30, indent = 2) %>%
+  cat("nn")
+
+# display paragraph with following lines indentation of 3
+cat(str_wrap(some_quote, width = 30, exdent = 3), "nn")
+
+# equivalently
+some_quote %>%
+  str_wrap(width = 30, exdent = 3) %>%
+  cat("nn")
+  
+```
+  
+
+### trimming with `str trim()`
+
+One of the typical tasks of string processing is that of parsing a text into individual words.
+Usually, we end up with words that have blank spaces, called whitespaces, on either end of
+the word. In this situation, we can use the str trim() function to remove any number of
+whitespaces at the ends of a string. Its usage requires only two arguments:
+
+`str_trim(string, side = "both")`
+
+Consider the following vector of strings, some of which have whitespaces either on the left,
+on the right, or on both sides.
+
+Here's what `str trim()` would do to them under different settings of side
+
+```{r}
+# text with whitespaces
+bad_text <- c("This", " example ", "has several ", " whitespaces ")
+
+# remove whitespaces on the left side
+bad_text %>%
+  str_trim(side = "left")
+
+# remove whitespaces on the right side
+bad_text %>%
+  str_trim(side = "right")
+
+# remove whitespaces on both sides
+bad_text %>%
+  str_trim(side = "both")
+
+# default setting
+bad_text %>%
+  str_trim()
+```
+
+### word extraction with `word()`
+
+We now describe the `word()` function that is designed to extract words from a sentence.
+
+general form: `word(string, start = 1L, end = start, sep = fixed(" "))`
+
+```{r}
+
+```
+
+The way in which we use `word()` is by passing it a string, together with a start position of the first word to extract, and an end position of the last word to extract. 
+
+By default, the separator sep used between words is a single space.
+
+Let's see some examples:
+
+```{r}
+# some sentence
+change <- c("Be the change", "you want to be")
+
+# extract first word
+change %>%
+  word(1)
+
+# extract second word
+change %>%
+  word(2)
+
+# extract last word
+change %>%
+  word(-1)
+
+# extract all but the first words
+change %>%
+  word(2, -1)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
