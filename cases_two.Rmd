@@ -310,6 +310,13 @@ recession_dat <-
 
 # check
 recession_dat %>%
+  select(1,2,3) %>%
+  sample_n(4)
+
+
+
+recession_dat %>%
+  select(4,5) %>%
   sample_n(4)
   
 

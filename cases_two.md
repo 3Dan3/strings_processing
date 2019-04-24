@@ -272,12 +272,12 @@ long_jump_dat %>%
   sample_n(5)
 ```
 
-    ##   mark wind             athlete country                  venue       date
-    ## 1 8.21  0.0       Ralph Boston      USA  Walnut, United States 1960-08-12
-    ## 2 7.89   NA     DeHart Hubbard      USA Chicago, United States 1925-06-13
-    ## 3 8.95  0.3        Mike Powell      USA Shinjuku, Tokyo, Japan 1991-08-30
-    ## 4 8.35  0.0 Igor Ter-Ovanesyan      URS    Mexico City, Mexico 1967-10-19
-    ## 5 8.28  1.2       Ralph Boston      USA   Moscow, Soviet Union 1961-07-16
+    ##   mark wind         athlete country                    venue       date
+    ## 1 8.31  0.0   Ralph Boston      USA        Kingston, Jamaica 1964-08-15
+    ## 2 8.95  0.3    Mike Powell      USA   Shinjuku, Tokyo, Japan 1991-08-30
+    ## 3 7.69   NA Edward Gourdin      USA Cambridge, United States 1921-07-23
+    ## 4 7.89   NA DeHart Hubbard      USA   Chicago, United States 1925-06-13
+    ## 5 8.28  1.2   Ralph Boston      USA     Moscow, Soviet Union 1961-07-16
 
 ## list of recessions in the US
 
@@ -372,16 +372,24 @@ recession_dat <-
 ``` r
 # check
 recession_dat %>%
+  select(1,2,3) %>%
   sample_n(4)
 ```
 
-    ##                    name      period_range duration_months
-    ## 1     Recession of 1945 Feb 1945–Oct 1945               8
-    ## 2     1973–75 recession Nov 1973–Mar 1975              16
-    ## 3  Recession of 1960–61 Apr 1960–Feb 1961              10
-    ## 4 Early 2000s recession Mar 2001–Nov 2001               8
+    ##                   name        period_range duration_months
+    ## 1 Recession of 1960–61   Apr 1960–Feb 1961              10
+    ## 2    Recession of 1949   Nov 1948–Oct 1949              11
+    ## 3    Recession of 1945   Feb 1945–Oct 1945               8
+    ## 4    Recession of 1958 Aug 1957–April 1958               8
+
+``` r
+recession_dat %>%
+  select(4,5) %>%
+  sample_n(4)
+```
+
     ##   time_since_previous_recession_months gdp_decline_peak_to_trough
-    ## 1                                   80                     -0.127
+    ## 1                                   12                     -0.027
     ## 2                                   36                     -0.032
-    ## 3                                   24                     -0.016
-    ## 4                                  120                     -0.003
+    ## 3                                   21                     -0.267
+    ## 4                                   45                     -0.026
