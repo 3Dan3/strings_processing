@@ -21,6 +21,8 @@ library(janitor)
 library(lubridate)
 library(scales)
 library(ggalt)
+library(knitr)
+library(kableExtra)
 ```
 
 ## matching e-mail addresses
@@ -311,13 +313,15 @@ recession_dat <-
 # check
 recession_dat %>%
   select(1,2,3) %>%
-  head(3)
+  head(3) %>%
+  kable()
 
 
 
 recession_dat %>%
   select(4,5) %>%
-  head(3)
+  head(3) %>%
+  kable()
   
 
 ```

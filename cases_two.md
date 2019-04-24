@@ -14,6 +14,8 @@ library(janitor)
 library(lubridate)
 library(scales)
 library(ggalt)
+library(knitr)
+library(kableExtra)
 ```
 
 ## matching e-mail addresses
@@ -272,12 +274,18 @@ long_jump_dat %>%
   sample_n(5)
 ```
 
-    ##   mark wind             athlete country                  venue       date
-    ## 1 8.35  0.0 Igor Ter-Ovanesyan      URS    Mexico City, Mexico 1967-10-19
-    ## 2 8.35  0.0       Ralph Boston      USA Modesto, United States 1965-05-29
-    ## 3 7.76   NA    Robert LeGendre      USA          Paris, France 1924-07-07
-    ## 4 8.28  1.2       Ralph Boston      USA   Moscow, Soviet Union 1961-07-16
-    ## 5 8.24  1.8       Ralph Boston      USA Modesto, United States 1961-05-27
+    ##   mark wind             athlete country                      venue
+    ## 1 7.76   NA    Robert LeGendre      USA              Paris, France
+    ## 2 8.90  2.0         Bob Beamon      USA        Mexico City, Mexico
+    ## 3 8.35  0.0 Igor Ter-Ovanesyan      URS        Mexico City, Mexico
+    ## 4 7.98  0.5       Chuhei Nambu      JPN               Tokyo, Japan
+    ## 5 8.34  1.0       Ralph Boston      USA Los Angeles, United States
+    ##         date
+    ## 1 1924-07-07
+    ## 2 1968-10-18
+    ## 3 1967-10-19
+    ## 4 1931-10-27
+    ## 5 1964-09-12
 
 ## list of recessions in the US
 
@@ -373,21 +381,189 @@ recession_dat <-
 # check
 recession_dat %>%
   select(1,2,3) %>%
-  head(3)
+  head(3) %>%
+  kable()
 ```
 
-    ##                     name       period_range duration_months
-    ## 1       Great Depression  Aug 1929–Mar 1933              43
-    ## 2 Recession of 1937–1938 May 1937–June 1938              13
-    ## 3      Recession of 1945  Feb 1945–Oct 1945               8
+<table>
+
+<thead>
+
+<tr>
+
+<th style="text-align:left;">
+
+name
+
+</th>
+
+<th style="text-align:left;">
+
+period\_range
+
+</th>
+
+<th style="text-align:right;">
+
+duration\_months
+
+</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+<tr>
+
+<td style="text-align:left;">
+
+Great Depression
+
+</td>
+
+<td style="text-align:left;">
+
+Aug 1929–Mar 1933
+
+</td>
+
+<td style="text-align:right;">
+
+43
+
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+Recession of 1937–1938
+
+</td>
+
+<td style="text-align:left;">
+
+May 1937–June 1938
+
+</td>
+
+<td style="text-align:right;">
+
+13
+
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+Recession of 1945
+
+</td>
+
+<td style="text-align:left;">
+
+Feb 1945–Oct 1945
+
+</td>
+
+<td style="text-align:right;">
+
+8
+
+</td>
+
+</tr>
+
+</tbody>
+
+</table>
 
 ``` r
 recession_dat %>%
   select(4,5) %>%
-  head(3)
+  head(3) %>%
+  kable()
 ```
 
-    ##   time_since_previous_recession_months gdp_decline_peak_to_trough
-    ## 1                                   21                     -0.267
-    ## 2                                   50                     -0.182
-    ## 3                                   80                     -0.127
+<table>
+
+<thead>
+
+<tr>
+
+<th style="text-align:right;">
+
+time\_since\_previous\_recession\_months
+
+</th>
+
+<th style="text-align:right;">
+
+gdp\_decline\_peak\_to\_trough
+
+</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+<tr>
+
+<td style="text-align:right;">
+
+21
+
+</td>
+
+<td style="text-align:right;">
+
+\-0.267
+
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:right;">
+
+50
+
+</td>
+
+<td style="text-align:right;">
+
+\-0.182
+
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:right;">
+
+80
+
+</td>
+
+<td style="text-align:right;">
+
+\-0.127
+
+</td>
+
+</tr>
+
+</tbody>
+
+</table>
