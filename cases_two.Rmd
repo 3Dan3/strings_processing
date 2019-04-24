@@ -328,7 +328,7 @@ recession_dat %>%
 
 #### some plots
 
-```{r, fig.height=4, fig.width=6}
+```{r, fig.height=5, fig.width=6}
 
 # shorten the name of the early 90's recession
 recession_dat2 <-
