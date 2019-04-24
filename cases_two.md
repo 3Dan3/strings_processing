@@ -274,12 +274,18 @@ long_jump_dat %>%
   sample_n(5)
 ```
 
-    ##   mark wind          athlete country                    venue       date
-    ## 1 7.76   NA Robert LeGendre      USA            Paris, France 1924-07-07
-    ## 2 8.28  1.2    Ralph Boston      USA     Moscow, Soviet Union 1961-07-16
-    ## 3 8.13  1.5     Jesse Owens      USA Ann Arbor, United States 1935-05-25
-    ## 4 8.90  2.0      Bob Beamon      USA      Mexico City, Mexico 1968-10-18
-    ## 5 8.35  0.0    Ralph Boston      USA   Modesto, United States 1965-05-29
+    ##   mark wind             athlete country                      venue
+    ## 1 8.28  1.2       Ralph Boston      USA       Moscow, Soviet Union
+    ## 2 7.61   NA     Peter O'Connor      IRE            Dublin, Ireland
+    ## 3 8.31 -0.1 Igor Ter-Ovanesyan      URS      Yerevan, Soviet Union
+    ## 4 7.98  0.5       Chuhei Nambu      JPN               Tokyo, Japan
+    ## 5 8.34  1.0       Ralph Boston      USA Los Angeles, United States
+    ##         date
+    ## 1 1961-07-16
+    ## 2 1901-08-05
+    ## 3 1962-06-10
+    ## 4 1931-10-27
+    ## 5 1964-09-12
 
 ## list of recessions in the US
 
@@ -298,7 +304,199 @@ df3 <- url %>%
   janitor::clean_names()
 
 
+# check raw data
+df3 %>%
+  select(1:3) %>% 
+  head(3) %>%
+  kable()
+```
 
+<table>
+
+<thead>
+
+<tr>
+
+<th style="text-align:left;">
+
+name
+
+</th>
+
+<th style="text-align:left;">
+
+period\_range
+
+</th>
+
+<th style="text-align:left;">
+
+duration\_months
+
+</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+<tr>
+
+<td style="text-align:left;">
+
+Great Depression
+
+</td>
+
+<td style="text-align:left;">
+
+Aug 1929–Mar 1933Oct 1929–Dec 1941
+
+</td>
+
+<td style="text-align:left;">
+
+433 years7 months
+
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+Recession of 1937–1938
+
+</td>
+
+<td style="text-align:left;">
+
+1937May 1937–June 1938
+
+</td>
+
+<td style="text-align:left;">
+
+131 year1 month
+
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+Recession of 1945
+
+</td>
+
+<td style="text-align:left;">
+
+1945Feb 1945–Oct 1945
+
+</td>
+
+<td style="text-align:left;">
+
+088 months
+
+</td>
+
+</tr>
+
+</tbody>
+
+</table>
+
+``` r
+df3 %>%
+  select(4,6) %>%
+  head(3) %>%
+  kable()
+```
+
+<table>
+
+<thead>
+
+<tr>
+
+<th style="text-align:left;">
+
+time\_since\_previous\_recession\_months
+
+</th>
+
+<th style="text-align:left;">
+
+gdp\_decline\_peak\_to\_trough
+
+</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+<tr>
+
+<td style="text-align:left;">
+
+0211 year9 months
+
+</td>
+
+<td style="text-align:left;">
+
+26.7−26.7%
+
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+0504 years2 months
+
+</td>
+
+<td style="text-align:left;">
+
+03.4−18.2%
+
+</td>
+
+</tr>
+
+<tr>
+
+<td style="text-align:left;">
+
+0806 years8 months
+
+</td>
+
+<td style="text-align:left;">
+
+12.7−12.7%
+
+</td>
+
+</tr>
+
+</tbody>
+
+</table>
+
+#### data cleaning
+
+``` r
 # fix duration months var
 dur_months_sub <-
   df3 %>%
@@ -584,7 +782,7 @@ recession_dat2 %>%
   theme_minimal()
 ```
 
-![](cases_two_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+![](cases_two_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
 
 ``` r
 # by gdp decline
@@ -601,7 +799,7 @@ recession_dat2 %>%
        x = "", y = "")
 ```
 
-![](cases_two_files/figure-gfm/unnamed-chunk-13-2.png)<!-- -->
+![](cases_two_files/figure-gfm/unnamed-chunk-14-2.png)<!-- -->
 
 ``` r
 # by time since previous recession
@@ -617,4 +815,4 @@ recession_dat2 %>%
        x = "", y = "")
 ```
 
-![](cases_two_files/figure-gfm/unnamed-chunk-13-3.png)<!-- -->
+![](cases_two_files/figure-gfm/unnamed-chunk-14-3.png)<!-- -->

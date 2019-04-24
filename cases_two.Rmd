@@ -241,7 +241,22 @@ df3 <- url %>%
   janitor::clean_names()
 
 
+# check raw data
+df3 %>%
+  select(1:3) %>% 
+  head(3) %>%
+  kable()
 
+
+df3 %>%
+  select(4,6) %>%
+  head(3) %>%
+  kable()
+```
+
+#### data cleaning
+
+```{r}
 # fix duration months var
 dur_months_sub <-
   df3 %>%
@@ -323,7 +338,6 @@ recession_dat %>%
   head(3) %>%
   kable()
   
-
 ```
 
 #### some plots
