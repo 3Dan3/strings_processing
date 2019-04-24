@@ -17,7 +17,10 @@ output:
 
 library(tidyverse)
 library(rvest)
+library(janitor)
 library(lubridate)
+library(scales)
+library(ggalt)
 ```
 
 ## matching e-mail addresses
@@ -220,7 +223,97 @@ long_jump_dat %>%
   
 ```
 
+## list of recessions in the US
 
+Below is the wikipedia table we want to extract
+
+![](imgs/wiki_recession_tbl.PNG)
+
+```{r}
+url <- "https://en.wikipedia.org/wiki/List_of_recessions_in_the_United_States"
+
+df3 <- url %>% 
+  read_html() %>% 
+  html_table() %>% 
+  .[[3]] %>% 
+  janitor::clean_names()
+
+
+
+# fix duration months var
+dur_months_sub <-
+  df3 %>%
+  select(name, duration_months, everything()) %>% 
+  mutate(duration_months = substring(duration_months, 3),
+         duration_months = str_replace(duration_months, "year[s]?", "year\\s "),
+         duration_years = str_extract(duration_months, "[:digit:]\\syears"),
+         duration_years = str_extract(duration_years, "[:digit:]"),
+         duration_years =  str_replace_na(duration_years, replacement = "0"),
+         duration_months = str_remove(duration_months, "[:digit:]\\syears"),
+         duration_months = str_remove(duration_months, "month[s]?")) %>%
+  select(1,2, duration_years) %>%
+  mutate_at(c(2,3), as.numeric) %>% 
+  mutate(duration_months = duration_months + duration_years * 12) %>% 
+  select(-duration_years)
+
+
+# fix period range
+period_rng_sub <-
+  df3 %>%
+  select(1,2) %>%
+  mutate(period_range = str_replace(period_range, "^[:digit:]+", "" )) %>%
+  mutate(period_range = str_extract(period_range,
+                                    "[A-Z][a-z]{2,3}\\s[:digit:]+[:punct:][A-Z][a-z]{2,4}\\s[:digit:]+"))
+
+
+# fix time_since_previous_recession_months
+since_prev_sub <-
+  df3 %>%
+  select(1,4) %>%
+  mutate(time_since_previous_recession_months = str_sub(time_since_previous_recession_months, 4)) %>%
+  mutate(time_since_years = str_extract(time_since_previous_recession_months, "[:digit:]+\\syear[s]?"),
+         time_since_years = str_extract(time_since_years, "[:digit:]+")) %>%
+  mutate(time_since_previous_recession_months2 = str_remove(time_since_previous_recession_months,
+                                                           "[:digit:]+\\syear[s]?")) %>%
+  select(1,2,4, everything()) %>%
+  mutate(time_since_previous_recession_months = str_extract(time_since_previous_recession_months2,
+                                                            "[:digit:]+"),
+         time_since_previous_recession_months = str_replace_na(time_since_previous_recession_months,
+                                                               replacement = "0"),
+         time_since_previous_recession_months = as.numeric(time_since_previous_recession_months),
+         time_since_years = as.numeric(time_since_years),
+         time_since_previous_recession_months = time_since_years * 12 + time_since_previous_recession_months) %>%
+  select(1,2)
+         
+
+
+# fix gdp_decline_peak_...
+gdp_delc_sub <-
+  df3 %>%
+  select(1, gdp_decline_peak_to_trough) %>%
+  mutate(gdp_decline_peak_to_trough = str_remove(gdp_decline_peak_to_trough, "[:digit:]+\\.[:digit:]"),
+         gdp_decline_peak_to_trough = str_remove(gdp_decline_peak_to_trough, "\\%"),
+         gdp_decline_peak_to_trough = str_replace(gdp_decline_peak_to_trough, "\\[\\d{2}\\]", ""),
+         gdp_decline_peak_to_trough = str_extract(gdp_decline_peak_to_trough, "[:digit:]+\\.[:digit:]")) %>%
+  mutate_at(2, as.numeric) %>%
+  mutate_at(2, ~. * -1/100)
+
+
+# all together
+recession_dat <-
+  dur_months_sub %>%
+  left_join(period_rng_sub) %>%
+  left_join(since_prev_sub) %>%
+  left_join(gdp_delc_sub) %>% 
+  select(1,3,2,4,5) 
+
+
+# check
+recession_dat %>%
+  sample_n(4)
+  
+
+```
 
 
 
