@@ -326,5 +326,53 @@ recession_dat %>%
 
 ```
 
+#### some plots
 
+```{r, fig.height=3, fig.width=6}
+
+# shorten the name of the early 90's recession
+recession_dat2 <-
+  recession_dat %>%
+  mutate(name = str_replace(name, "in the United States", ""),
+         name = str_replace(name, "recession", "Recession"))
+
+
+# length of recessions
+recession_dat2 %>%
+  arrange(desc(duration_months)) %>%
+  ggplot(aes(fct_reorder(name, duration_months), duration_months)) +
+  geom_lollipop(color = "steelblue3", size = .6) +
+  #geom_point() +
+  coord_flip() +
+  labs(title = "Length of Recessions in the US, months",
+       x = "", y = "") +
+  theme_minimal()
+
+
+# by gdp decline
+recession_dat2 %>%
+  arrange(gdp_decline_peak_to_trough) %>%
+  ggplot(aes(fct_reorder(name, -gdp_decline_peak_to_trough), gdp_decline_peak_to_trough)) +
+  geom_lollipop(color = "steelblue4", size = .6) +
+  scale_y_continuous(limits = c(-0.28, 0),
+                     breaks = seq.int(-0.25, 0, 0.05),
+                     labels = percent_format()) +
+  coord_flip() +
+  theme_minimal() +
+  labs(title = "GDP decline during US Recessions",
+       x = "", y = "")
+
+# by time since previous recession
+recession_dat2 %>%
+  arrange(desc(time_since_previous_recession_months)) %>%
+  ggplot(aes(fct_reorder(name, time_since_previous_recession_months), time_since_previous_recession_months)) +
+  geom_lollipop(color = "chocolate", size = .6) +
+  scale_y_continuous(limits = c(0,130),
+                     breaks = seq.int(0, 120, 10)) +
+  coord_flip() +
+  theme_minimal() +
+  labs(title = "Months since the previous Recession",
+       x = "", y = "")
+  
+```
 

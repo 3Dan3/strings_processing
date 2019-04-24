@@ -274,18 +274,12 @@ long_jump_dat %>%
   sample_n(5)
 ```
 
-    ##   mark wind             athlete country                      venue
-    ## 1 7.76   NA    Robert LeGendre      USA              Paris, France
-    ## 2 8.90  2.0         Bob Beamon      USA        Mexico City, Mexico
-    ## 3 8.35  0.0 Igor Ter-Ovanesyan      URS        Mexico City, Mexico
-    ## 4 7.98  0.5       Chuhei Nambu      JPN               Tokyo, Japan
-    ## 5 8.34  1.0       Ralph Boston      USA Los Angeles, United States
-    ##         date
-    ## 1 1924-07-07
-    ## 2 1968-10-18
-    ## 3 1967-10-19
-    ## 4 1931-10-27
-    ## 5 1964-09-12
+    ##   mark wind       athlete country                  venue       date
+    ## 1 8.90  2.0   Bob Beamon      USA    Mexico City, Mexico 1968-10-18
+    ## 2 7.93  0.0 Sylvio Cator      HAI          Paris, France 1928-09-09
+    ## 3 8.24  1.8 Ralph Boston      USA Modesto, United States 1961-05-27
+    ## 4 8.28  1.2 Ralph Boston      USA   Moscow, Soviet Union 1961-07-16
+    ## 5 8.95  0.3  Mike Powell      USA Shinjuku, Tokyo, Japan 1991-08-30
 
 ## list of recessions in the US
 
@@ -567,3 +561,60 @@ gdp\_decline\_peak\_to\_trough
 </tbody>
 
 </table>
+
+#### some plots
+
+``` r
+# shorten the name of the early 90's recession
+recession_dat2 <-
+  recession_dat %>%
+  mutate(name = str_replace(name, "in the United States", ""),
+         name = str_replace(name, "recession", "Recession"))
+
+
+# length of recessions
+recession_dat2 %>%
+  arrange(desc(duration_months)) %>%
+  ggplot(aes(fct_reorder(name, duration_months), duration_months)) +
+  geom_lollipop(color = "steelblue3", size = .6) +
+  #geom_point() +
+  coord_flip() +
+  labs(title = "Length of Recessions in the US, months",
+       x = "", y = "") +
+  theme_minimal()
+```
+
+![](cases_two_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+
+``` r
+# by gdp decline
+recession_dat2 %>%
+  arrange(gdp_decline_peak_to_trough) %>%
+  ggplot(aes(fct_reorder(name, -gdp_decline_peak_to_trough), gdp_decline_peak_to_trough)) +
+  geom_lollipop(color = "steelblue4", size = .6) +
+  scale_y_continuous(limits = c(-0.28, 0),
+                     breaks = seq.int(-0.25, 0, 0.05),
+                     labels = percent_format()) +
+  coord_flip() +
+  theme_minimal() +
+  labs(title = "GDP decline during US Recessions",
+       x = "", y = "")
+```
+
+![](cases_two_files/figure-gfm/unnamed-chunk-13-2.png)<!-- -->
+
+``` r
+# by time since previous recession
+recession_dat2 %>%
+  arrange(desc(time_since_previous_recession_months)) %>%
+  ggplot(aes(fct_reorder(name, time_since_previous_recession_months), time_since_previous_recession_months)) +
+  geom_lollipop(color = "chocolate", size = .6) +
+  scale_y_continuous(limits = c(0,130),
+                     breaks = seq.int(0, 120, 10)) +
+  coord_flip() +
+  theme_minimal() +
+  labs(title = "Months since the previous Recession",
+       x = "", y = "")
+```
+
+![](cases_two_files/figure-gfm/unnamed-chunk-13-3.png)<!-- -->
