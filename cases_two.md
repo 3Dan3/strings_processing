@@ -274,18 +274,12 @@ long_jump_dat %>%
   sample_n(5)
 ```
 
-    ##   mark wind             athlete country                      venue
-    ## 1 8.28  1.2       Ralph Boston      USA       Moscow, Soviet Union
-    ## 2 7.61   NA     Peter O'Connor      IRE            Dublin, Ireland
-    ## 3 8.31 -0.1 Igor Ter-Ovanesyan      URS      Yerevan, Soviet Union
-    ## 4 7.98  0.5       Chuhei Nambu      JPN               Tokyo, Japan
-    ## 5 8.34  1.0       Ralph Boston      USA Los Angeles, United States
-    ##         date
-    ## 1 1961-07-16
-    ## 2 1901-08-05
-    ## 3 1962-06-10
-    ## 4 1931-10-27
-    ## 5 1964-09-12
+    ##   mark wind       athlete country                    venue       date
+    ## 1 8.35    0 Ralph Boston      USA   Modesto, United States 1965-05-29
+    ## 2 8.21    0 Ralph Boston      USA    Walnut, United States 1960-08-12
+    ## 3 8.31    0 Ralph Boston      USA        Kingston, Jamaica 1964-08-15
+    ## 4 7.93    0 Sylvio Cator      HAI            Paris, France 1928-09-09
+    ## 5 7.90   NA  Edward Hamm      USA Cambridge, United States 1928-07-07
 
 ## list of recessions in the US
 
@@ -811,7 +805,7 @@ recession_dat2 %>%
                      breaks = seq.int(0, 120, 10)) +
   coord_flip() +
   theme_minimal() +
-  labs(title = "Months since the previous Recession",
+  labs(title = "Months since previous Recession",
        x = "", y = "")
 ```
 
