@@ -274,12 +274,18 @@ long_jump_dat %>%
   sample_n(5)
 ```
 
-    ##   mark wind       athlete country                  venue       date
-    ## 1 8.90  2.0   Bob Beamon      USA    Mexico City, Mexico 1968-10-18
-    ## 2 7.93  0.0 Sylvio Cator      HAI          Paris, France 1928-09-09
-    ## 3 8.24  1.8 Ralph Boston      USA Modesto, United States 1961-05-27
-    ## 4 8.28  1.2 Ralph Boston      USA   Moscow, Soviet Union 1961-07-16
-    ## 5 8.95  0.3  Mike Powell      USA Shinjuku, Tokyo, Japan 1991-08-30
+    ##   mark wind             athlete country                      venue
+    ## 1 8.90  2.0         Bob Beamon      USA        Mexico City, Mexico
+    ## 2 8.34  1.0       Ralph Boston      USA Los Angeles, United States
+    ## 3 8.31  0.0       Ralph Boston      USA          Kingston, Jamaica
+    ## 4 8.24  1.8       Ralph Boston      USA     Modesto, United States
+    ## 5 8.35  0.0 Igor Ter-Ovanesyan      URS        Mexico City, Mexico
+    ##         date
+    ## 1 1968-10-18
+    ## 2 1964-09-12
+    ## 3 1964-08-15
+    ## 4 1961-05-27
+    ## 5 1967-10-19
 
 ## list of recessions in the US
 
