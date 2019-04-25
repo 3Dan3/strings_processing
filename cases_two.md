@@ -274,12 +274,12 @@ long_jump_dat %>%
   sample_n(5)
 ```
 
-    ##   mark wind          athlete country                  venue       date
-    ## 1 8.90  2.0      Bob Beamon      USA    Mexico City, Mexico 1968-10-18
-    ## 2 7.76   NA Robert LeGendre      USA          Paris, France 1924-07-07
-    ## 3 8.31  0.0    Ralph Boston      USA      Kingston, Jamaica 1964-08-15
-    ## 4 7.61   NA  Peter O'Connor      IRE        Dublin, Ireland 1901-08-05
-    ## 5 8.24  1.8    Ralph Boston      USA Modesto, United States 1961-05-27
+    ##   mark wind         athlete country                      venue       date
+    ## 1 7.69   NA Edward Gourdin      USA   Cambridge, United States 1921-07-23
+    ## 2 7.90   NA    Edward Hamm      USA   Cambridge, United States 1928-07-07
+    ## 3 7.93    0   Sylvio Cator      HAI              Paris, France 1928-09-09
+    ## 4 8.34    1   Ralph Boston      USA Los Angeles, United States 1964-09-12
+    ## 5 8.35    0   Ralph Boston      USA     Modesto, United States 1965-05-29
 
 ## list of recessions in the US
 
@@ -777,7 +777,7 @@ recession_dat2 %>%
   theme_minimal()
 ```
 
-![](cases_two_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+<img src="cases_two_files/figure-gfm/unnamed-chunk-14-1.png" style="display: block; margin: auto;" />
 
 ``` r
 # by gdp decline
@@ -794,7 +794,7 @@ recession_dat2 %>%
        x = "", y = "")
 ```
 
-![](cases_two_files/figure-gfm/unnamed-chunk-14-2.png)<!-- -->
+<img src="cases_two_files/figure-gfm/unnamed-chunk-14-2.png" style="display: block; margin: auto;" />
 
 ``` r
 # by time since previous recession
@@ -810,4 +810,4 @@ recession_dat2 %>%
        x = "", y = "")
 ```
 
-![](cases_two_files/figure-gfm/unnamed-chunk-14-3.png)<!-- -->
+<img src="cases_two_files/figure-gfm/unnamed-chunk-14-3.png" style="display: block; margin: auto;" />
