@@ -342,7 +342,7 @@ recession_dat %>%
 
 #### some plots
 
-```{r, fig.height=5, fig.width=6}
+```{r, fig.height=4, fig.width=6}
 
 # shorten the name of the early 90's recession
 recession_dat2 <-
@@ -356,7 +356,8 @@ recession_dat2 %>%
   arrange(desc(duration_months)) %>%
   ggplot(aes(fct_reorder(name, duration_months), duration_months)) +
   geom_lollipop(color = "steelblue3", size = .6) +
-  #geom_point() +
+  scale_y_continuous(limits = c(0,45),
+                     breaks = seq.int(0,45,5)) +
   coord_flip() +
   labs(title = "Length of Recessions in the US, months",
        x = "", y = "") +

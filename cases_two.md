@@ -274,12 +274,12 @@ long_jump_dat %>%
   sample_n(5)
 ```
 
-    ##   mark wind       athlete country                    venue       date
-    ## 1 8.35    0 Ralph Boston      USA   Modesto, United States 1965-05-29
-    ## 2 8.21    0 Ralph Boston      USA    Walnut, United States 1960-08-12
-    ## 3 8.31    0 Ralph Boston      USA        Kingston, Jamaica 1964-08-15
-    ## 4 7.93    0 Sylvio Cator      HAI            Paris, France 1928-09-09
-    ## 5 7.90   NA  Edward Hamm      USA Cambridge, United States 1928-07-07
+    ##   mark wind          athlete country                  venue       date
+    ## 1 8.90  2.0      Bob Beamon      USA    Mexico City, Mexico 1968-10-18
+    ## 2 7.76   NA Robert LeGendre      USA          Paris, France 1924-07-07
+    ## 3 8.31  0.0    Ralph Boston      USA      Kingston, Jamaica 1964-08-15
+    ## 4 7.61   NA  Peter O'Connor      IRE        Dublin, Ireland 1901-08-05
+    ## 5 8.24  1.8    Ralph Boston      USA Modesto, United States 1961-05-27
 
 ## list of recessions in the US
 
@@ -769,7 +769,8 @@ recession_dat2 %>%
   arrange(desc(duration_months)) %>%
   ggplot(aes(fct_reorder(name, duration_months), duration_months)) +
   geom_lollipop(color = "steelblue3", size = .6) +
-  #geom_point() +
+  scale_y_continuous(limits = c(0,45),
+                     breaks = seq.int(0,45,5)) +
   coord_flip() +
   labs(title = "Length of Recessions in the US, months",
        x = "", y = "") +
